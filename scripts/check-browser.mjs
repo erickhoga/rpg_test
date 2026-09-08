@@ -29,7 +29,7 @@ const install = async (state) => {
   await page.locator("#name").pressSequentially("browser_test");
   await page.locator("form button").click();
   await page
-    .locator("canvas")
+    .locator("#board")
     .waitFor({ timeout: 5000 })
     .catch(async (e) => {
       console.log("body", await page.locator("#app").innerHTML());
@@ -83,7 +83,7 @@ await page.keyboard.press("7");
 assert.equal(await page.locator("#mana-value").textContent(), "15 / 28");
 assert.match(
   await page.locator(".boss-panel").textContent(),
-  /Laser orbital.*impacto/s,
+  /Laser orbital.*SEGURA/s,
 );
 await page.screenshot({ path: "/tmp/rpg-boss-mobile.png", fullPage: true });
 assert.equal(
@@ -92,6 +92,26 @@ assert.equal(
 );
 await page.setViewportSize({ width: 1440, height: 1100 });
 await page.screenshot({ path: "/tmp/rpg-boss-desktop.png", fullPage: true });
+let challenge = await page.evaluate(() =>
+  JSON.parse(localStorage.getItem("rpg:browser_test")),
+);
+let intent = challenge.run.enemies.find((e) => e.intent).intent;
+const seconds = Number(await page.locator("#reaction-seconds").textContent());
+assert.ok(seconds > 0 && seconds <= 3.5);
+await page.keyboard.press("c");
+assert.equal(await page.locator(".reaction-overlay").count(), 1);
+const rect = await page.locator("#reaction-board").boundingBox(),
+  safe = intent.safe[0];
+await page.mouse.click(
+  rect.x + ((safe.x + 0.5) * rect.width) / 15,
+  rect.y + ((safe.y + 0.5) * rect.height) / 15,
+);
+assert.equal(await page.locator(".reaction-overlay").count(), 0);
+const escaped = await page.evaluate(() =>
+  JSON.parse(localStorage.getItem("rpg:browser_test")),
+);
+assert.equal(escaped.run.hp, 1000);
+assert.deepEqual([escaped.run.x, escaped.run.y], [safe.x, safe.y]);
 await page.locator('[data-do="camp"]').click();
 await page.locator('[data-purchase="mana"]').click();
 let saved = await page.evaluate(() =>
@@ -104,6 +124,29 @@ state.run.mana = 28;
 await install(state);
 await page.keyboard.press("Enter");
 assert.match(await page.locator(".board-head").textContent(), /ANDAR 10/);
+// Sem qualquer entrada o tempo deve causar dano, mantendo o mesmo turno.
+state.run.enemies[0].intent = null;
+state.run.enemies[0].phase = 0;
+await install(state);
+await page.keyboard.press(".");
+const active = await page.evaluate(() =>
+  JSON.parse(localStorage.getItem("rpg:browser_test")),
+);
+await page.waitForTimeout(3700);
+const expired = await page.evaluate(() =>
+  JSON.parse(localStorage.getItem("rpg:browser_test")),
+);
+assert.ok(expired.run.hp < active.run.hp);
+assert.equal(expired.run.turn, active.run.turn);
+assert.equal(await page.locator(".reaction-overlay").count(), 0);
+// Reabrir um save com prazo vencido resolve o dano imediatamente, sem novo contador.
+active.run.enemies[0].intent.deadline = Date.now() - 100;
+await install(active);
+const reopened = await page.evaluate(() =>
+  JSON.parse(localStorage.getItem("rpg:browser_test")),
+);
+assert.ok(reopened.run.hp < active.run.hp);
+assert.equal(await page.locator(".reaction-overlay").count(), 0);
 state.run = null;
 state.bank = 200;
 await installCamp(state);
@@ -123,6 +166,6 @@ async function installCamp(state) {
 }
 assert.deepEqual(errors, []);
 console.log(
-  "Browser OK: QEZC, Enter, projétil, bloqueio durante animação, mobile sem overflow, upgrade permanente, mana, loja, chefe e saída bloqueada.",
+  "Browser OK: QEZC, Enter, projétil, bloqueio durante animação, mobile sem overflow, upgrade permanente, mana, loja, chefe, clique seguro, diagonais bloqueadas, timeout real e reload sem reiniciar prazo.",
 );
 await browser.close();

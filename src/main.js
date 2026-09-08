@@ -3,6 +3,7 @@ import {
   SIZE,
   migrate,
   spells,
+  resolveReaction,
   profile,
   start,
   act,
@@ -13,7 +14,7 @@ import {
   upgrades,
   purchase,
 } from "./engine.js";
-import { encounters } from "./encounters.js";
+import { encounters, pendingReaction } from "./encounters.js";
 import { drawSprite } from "./sprites.js";
 import { Save, normalize } from "./save.js";
 const app = document.querySelector("#app");
@@ -38,7 +39,7 @@ const escape = (s) =>
   );
 function frame(content) {
   cancelAnimationFrame(animationFrame);
-  app.innerHTML = `<header><a class="brand" href="./"><span class="brand-icon">✦</span><span>RAIZ PROFUNDA<small>UM PASSO. UM DESTINO.</small></span></a><span class="tag">ROGUELITE POR TURNOS</span><span class="online"><i></i> ${p ? escape(p.name) : "PRONTO PARA EXPLORAR"}</span></header>${content}<footer><span>RAIZ PROFUNDA <b> / </b> MANA & BOSSES 03</span><span id="sync">${status}</span></footer>`;
+  app.innerHTML = `<header><a class="brand" href="./"><span class="brand-icon">✦</span><span>RAIZ PROFUNDA<small>UM PASSO. UM DESTINO.</small></span></a><span class="tag">ROGUELITE POR TURNOS</span><span class="online"><i></i> ${p ? escape(p.name) : "PRONTO PARA EXPLORAR"}</span></header>${content}<footer><span>RAIZ PROFUNDA <b> / </b> REACTION BOSS 04</span><span id="sync">${status}</span></footer>`;
 }
 function login() {
   frame(
@@ -65,6 +66,9 @@ function login() {
   };
 }
 function render() {
+  if (p?.run && !saver.conflict && resolveReaction(p, null, Date.now()))
+    saver.save(p);
+  document.body.classList.toggle("reacting", Boolean(pendingReaction(p?.run)));
   if (!p) return login();
   if (!p.run) return camp();
   let r = p.run;
@@ -104,7 +108,7 @@ function render() {
       .join(
         "",
       )}${ability("potion", "⚗", "Poção vital", `${r.potions} disponíveis · +25 vida`, "3", !r.potions || r.hp === r.maxHp)}${ability("mana", "◈", "Poção de mana", `${r.manaPotions} disponíveis · +14 mana`, "7", !r.manaPotions || r.mana === r.maxMana)}${ability("wait", "◷", "Esperar", "Passa um turno", ".")} </div></section><section class="panel journal"><div class="eyebrow">DIÁRIO DA EXPEDIÇÃO</div>${r.log.map((l, i) => `<p class="${i === 0 ? "latest" : ""}">${escape(l)}</p>`).join("")}</section><div class="shards">✧ <strong>${r.shards}</strong><span>fragmentos nesta run<small>Guardados quando você cair.</small></span></div></aside></div></main>${
-      r.choices
+      r.choices && !pendingReaction(r)
         ? `<div class="overlay"><section class="panel choice"><div class="eyebrow">NÍVEL ${r.level} · ${r.choices} ESCOLHA(S)</div><h2>As raízes te fortalecem.</h2><p>Escolha uma bênção para esta expedição.</p><div>${[
             ["vigor", "♥ Vitalidade", "+6 de vida máxima"],
             ["force", "⚔ Ferocidade", "+1 de ataque"],
@@ -118,6 +122,24 @@ function render() {
         : ""
     }`,
   );
+  if (pendingReaction(r)) {
+    screen = "game";
+    const boss = pendingReaction(r);
+    app.insertAdjacentHTML(
+      "beforeend",
+      `<div class="reaction-overlay" role="dialog" aria-modal="true" aria-label="Desafio de esquiva"><div class="reaction-heading"><span>ATAQUE DE ${escape(boss.name)}</span><h2>CLIQUE NUMA CASA SEGURA!</h2><div class="reaction-clock"><b id="reaction-seconds"></b><small>SEGUNDOS</small></div><div class="reaction-progress"><i id="reaction-progress"></i></div><p>Casas verdes com ✓ = fuga · Casa errada ou tempo esgotado = dano</p></div><canvas id="reaction-board" width="720" height="720" aria-label="Clique ou toque numa casa verde marcada com um visto para esquivar."></canvas><div class="reaction-hint">${escape(boss.intent.skill)} · Escolha uma das casas destacadas. WASD e diagonais ficam bloqueados.</div></div>`,
+    );
+    updateReactionClock();
+    document
+      .querySelector("#reaction-board")
+      .addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        const rect = event.currentTarget.getBoundingClientRect();
+        const x = Math.floor(((event.clientX - rect.left) / rect.width) * SIZE),
+          y = Math.floor(((event.clientY - rect.top) / rect.height) * SIZE);
+        react({ x, y });
+      });
+  }
   if (screen !== "shop") startDrawing(r);
   bind();
 }
@@ -125,7 +147,7 @@ function bossPanel(r) {
   const boss = r.enemies.find((e) => e.type === "boss" && e.variant);
   if (!boss) return "";
   const def = encounters[boss.variant];
-  return `<section class="boss-panel" style="--boss-color:${def.color}"><div><b>${def.kind === "boss" ? "CHEFE" : "MINIBOSS"} · ${def.name}</b><span>${boss.hp} / ${boss.maxHp} HP</span></div><div class="meter"><i style="width:${(100 * boss.hp) / boss.maxHp}%"></i></div><p>${boss.intent ? `⚠ ${boss.intent.skill}: impacto em ${boss.intent.remaining || 1} ação(ões)! Saia das casas marcadas.` : def.tip} ${boss.hp < boss.maxHp / 2 && def.kind === "boss" ? "FÚRIA ATIVA." : ""}</p><small>Saída bloqueada até derrotá-lo.</small></section>`;
+  return `<section class="boss-panel" style="--boss-color:${def.color}"><div><b>${def.kind === "boss" ? "CHEFE" : "MINIBOSS"} · ${def.name}</b><span>${boss.hp} / ${boss.maxHp} HP</span></div><div class="meter"><i style="width:${(100 * boss.hp) / boss.maxHp}%"></i></div><p>${boss.intent ? `⚠ ${boss.intent.skill}: clique numa casa SEGURA antes do tempo acabar!` : def.tip} ${boss.hp < boss.maxHp / 2 && def.kind === "boss" ? "FÚRIA ATIVA." : ""}</p><small>Saída bloqueada até derrotá-lo.</small></section>`;
 }
 function ability(a, icon, title, desc, key, disabled = false) {
   return `<button class="ability" data-action="${a}" ${disabled ? "disabled" : ""}><span class="ability-icon">${icon}</span><span><b>${title}</b><small>${desc}</small></span><kbd>${key}</kbd></button>`;
@@ -195,13 +217,13 @@ function bind() {
       }),
   );
   document.querySelector('[data-do="start"]')?.addEventListener("click", () => {
-    if (saver.conflict || animating) return;
+    if (saver.conflict || animating || pendingReaction(p?.run)) return;
     start(p, Number(document.querySelector("select").value));
     screen = "game";
     saveRender();
   });
   document.querySelector('[data-do="camp"]')?.addEventListener("click", () => {
-    if (animating) return;
+    if (animating || pendingReaction(p?.run)) return;
     screen = screen === "shop" ? "game" : "shop";
     render();
   });
@@ -211,7 +233,7 @@ function saveRender() {
   render();
 }
 function action(a, x, y) {
-  if (saver.conflict || animating) return;
+  if (saver.conflict || animating || pendingReaction(p?.run)) return;
   const effects = [],
     before = p.run ? structuredClone(p.run) : null;
   if (!act(p, a, x, y, effects)) {
@@ -221,6 +243,7 @@ function action(a, x, y) {
   saver.save(p);
   if (
     effects.length &&
+    !pendingReaction(p?.run) &&
     screen === "game" &&
     !matchMedia("(prefers-reduced-motion: reduce)").matches
   ) {
@@ -243,6 +266,27 @@ function action(a, x, y) {
     animationFrame = requestAnimationFrame(tick);
   } else render();
 }
+function react(target = null) {
+  if (saver.conflict) return;
+  if (resolveReaction(p, target, Date.now())) {
+    animating = false;
+    saver.save(p);
+    render();
+  }
+}
+function updateReactionClock() {
+  const boss = pendingReaction(p?.run);
+  if (!boss) return;
+  const remaining = Math.max(0, boss.intent.deadline - Date.now());
+  const text = document.querySelector("#reaction-seconds");
+  if (text) text.textContent = (remaining / 1000).toFixed(1);
+  const bar = document.querySelector("#reaction-progress");
+  if (bar) bar.style.width = `${(remaining / boss.intent.durationMs) * 100}%`;
+  if (remaining === 0) react();
+}
+setInterval(updateReactionClock, 40);
+document.addEventListener("visibilitychange", updateReactionClock);
+window.addEventListener("focus", updateReactionClock);
 function startDrawing(r) {
   cancelAnimationFrame(animationFrame);
   const loop = () => {
@@ -395,7 +439,10 @@ document.addEventListener("keydown", (e) => {
   }
 });
 function draw(r) {
-  let c = document.querySelector("canvas").getContext("2d"),
+  let c = (
+      document.querySelector("#reaction-board") ||
+      document.querySelector("#board")
+    ).getContext("2d"),
     t = 48;
   c.fillStyle = "#080c20";
   c.fillRect(0, 0, 720, 720);
@@ -536,5 +583,24 @@ function draw(r) {
   c.lineWidth = 2;
   c.strokeRect(r.x * t + 3, r.y * t + 3, 42, 42);
   sprite(r.x, r.y, "hero");
+  const challenge = pendingReaction(r);
+  if (challenge) {
+    c.save();
+    for (const cell of challenge.intent.safe) {
+      const x = cell.x * t,
+        y = cell.y * t;
+      c.fillStyle = "#064939";
+      c.fillRect(x + 2, y + 2, t - 4, t - 4);
+      c.strokeStyle = c.shadowColor = "#62ff9d";
+      c.shadowBlur = 16;
+      c.lineWidth = 4;
+      c.strokeRect(x + 3, y + 3, t - 6, t - 6);
+      c.fillStyle = "#b6ffcb";
+      c.textAlign = "center";
+      c.font = "bold 27px sans-serif";
+      c.fillText("✓", x + 24, y + 33);
+    }
+    c.restore();
+  }
 }
 login();

@@ -85,7 +85,19 @@ Andares comuns usam labirintos procedurais conectados, com salas e atalhos. Múl
 | 20, 50… | ZERO                | Ruptura glacial em área e dreno de 8 mana |
 | 30, 60… | NEXUS               | Fendas explosivas e invocação de drones   |
 
-Casas marcadas são fixadas antes do impacto: linhas dão uma ação de esquiva e áreas maiores duas. A barra do chefe mostra o contador. Chefes maiores abaixo de metade da vida entram em fúria, com habilidades mais frequentes e fortes. Invocações têm limite de quatro drones ativos e não rendem moedas, fragmentos ou XP, evitando farm infinito. Matar o chefe cancela seu ataque pendente; drones restantes não bloqueiam a escada.
+### Reaction Boss 04
+
+Durante a habilidade do chefe, uma tela de reação mostra a arena e um cronômetro grande. Somente as casas verdes com ✓ são seguras: clique/toque em uma para executar um dash até ela. As casas são sorteadas a cada ataque entre posições alcançáveis em até quatro passos, sem atravessar paredes ou inimigos. A casa atual não pode ser escolhida; uma diagonal qualquer não é automaticamente segura.
+
+- Miniboss: duas casas possíveis e **4,5 segundos**.
+- Chefe: uma casa possível e **3,5 segundos**.
+- Chefe em fúria: uma casa possível e **2,8 segundos**.
+
+O primeiro clique decide: casa errada ou tempo esgotado causa dano imediato; clique correto dentro do prazo esquiva. Movimento, poderes, loja e ações normais ficam bloqueados durante o desafio. A resolução da reação não regenera mana nem concede turno extra. Os efeitos únicos permanecem: dreno de mana, invocações e dano progressivo.
+
+O prazo absoluto é salvo junto do personagem e não reinicia ao recarregar ou trocar de aba. Com a página fechada não há execução em segundo plano; ao reabrir, o jogo resolve imediatamente qualquer prazo vencido. Navegadores podem suspender timers em abas ocultas, mas o prazo é conferido novamente ao voltar. Este jogo casual executa a mecânica no cliente, sem validação antitrapaça no servidor.
+
+Ataques pendentes da versão antiga são descartados uma vez na migração, e o chefe prepara o novo desafio na próxima ação. Desafios desta versão preservam seus prazos e casas no save. Chefes maiores em fúria também usam habilidades mais frequentemente. Invocações têm limite de quatro drones ativos e não rendem moedas, fragmentos ou XP. Drones restantes não bloqueiam a escada após a morte do chefe.
 
 Saves antigos recebem mana automaticamente, mantendo recursos gastos em acessos futuros. Guardiões antigos recebem variante e habilidades sem reiniciar seu mapa; arenas novas aparecem ao descer ou começar outra run.
 
@@ -95,6 +107,6 @@ Coloque os arquivos em `public/sprites/` e edite `src/sprites.js`. Configure cad
 
 ## Verificação
 
-26 testes de combate, mana, encontros, progressão, labirinto, migração e persistência. Teste Chromium com diagonais QEZC, Enter na escada, projétil e bloqueio de ações durante animação, compra de melhoria, poção de mana, loja, aviso do chefe, bloqueio da escada e layout mobile sem overflow. Screenshots inspecionadas em desktop e celular. Integração de banco real continua pendente do SQL.
+30 testes de combate, mana, encontros, progressão, labirinto, migração e persistência. Teste Chromium com diagonais QEZC, Enter na escada, projétil e bloqueio de ações durante animação, compra de melhoria, poção de mana, loja, aviso do chefe, bloqueio da escada, clique seguro, bloqueio das diagonais durante o desafio, timeout real sem entrada, reabertura com prazo vencido e layout mobile sem overflow. Screenshots inspecionadas em desktop e celular. Integração de banco real continua pendente do SQL.
 
 Para repetir o teste de navegador, execute o servidor na porta 5173 e, em outro terminal, `node scripts/check-browser.mjs`. Requer Chromium e dependências (`npx playwright install --with-deps chromium`). O teste intercepta Supabase e usa um personagem local, sem gravar no banco.

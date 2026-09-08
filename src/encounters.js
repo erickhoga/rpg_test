@@ -4,7 +4,7 @@ export const encounters = {
     kind: "mini",
     color: "#ffb84d",
     skill: "Cruz de choque",
-    tip: "A cruz marcada explode na próxima ação. Saia da linha.",
+    tip: "Clique numa casa SEGURA antes do cronômetro zerar.",
     pattern: "cross",
   },
   venom: {
@@ -20,7 +20,7 @@ export const encounters = {
     kind: "mini",
     color: "#ff708f",
     skill: "Impacto sísmico",
-    tip: "O impacto marca uma área de 3 × 3. Afaste-se.",
+    tip: "Impacto na arena: clique numa casa SEGURA.",
     pattern: "slam",
   },
   prism: {
@@ -28,7 +28,7 @@ export const encounters = {
     kind: "boss",
     color: "#ff51d6",
     skill: "Laser orbital",
-    tip: "Toda a linha e coluna marcadas serão atingidas. Mude as duas coordenadas.",
+    tip: "Laser orbital: só a casa SEGURA protege você.",
     pattern: "laser",
   },
   zero: {
@@ -109,98 +109,138 @@ export function arena(r) {
   ];
   r.arena = variant;
 }
-function mark(r, e) {
-  const def = encounters[e.variant],
-    cells = [];
-  for (let y = 1; y < 14; y++)
-    for (let x = 1; x < 14; x++) {
-      if (r.map[y][x]) continue;
-      const dx = Math.abs(x - r.x),
-        dy = Math.abs(y - r.y);
-      const selected =
-        def.pattern === "laser"
-          ? dx === 0 || dy === 0
-          : def.pattern === "cross"
-            ? (dx === 0 && dy <= 2) || (dy === 0 && dx <= 2)
-            : def.pattern === "ice"
-              ? Math.max(dx, dy) <= 2 && dx + dy <= 2
-              : Math.max(dx, dy) <= 1;
-      if (selected) cells.push({ x, y });
+export function mark(r, e, now = Date.now(), rng = Math.random) {
+  const def = encounters[e.variant];
+  // Casas de fuga alcançáveis por um dash de até quatro passos, sem cruzar paredes.
+  const queue = [{ x: r.x, y: r.y, steps: 0 }],
+    seen = new Set([`${r.x},${r.y}`]),
+    free = [];
+  for (let i = 0; i < queue.length; i++) {
+    const cell = queue[i];
+    if (cell.steps >= 2) free.push({ x: cell.x, y: cell.y });
+    if (cell.steps === 4) continue;
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const x = cell.x + dx,
+        y = cell.y + dy,
+        key = `${x},${y}`;
+      if (
+        r.map[y]?.[x] !== 0 ||
+        seen.has(key) ||
+        r.enemies.some((v) => v.x === x && v.y === y)
+      )
+        continue;
+      seen.add(key);
+      queue.push({ x, y, steps: cell.steps + 1 });
     }
+  }
+  // Corredores legados muito apertados ainda recebem ao menos uma saída válida.
+  if (!free.length) free.push(...queue.slice(1).map(({ x, y }) => ({ x, y })));
+  if (!free.length) return null;
+  const safe = [];
+  const count = def.kind === "mini" ? 2 : 1;
+  while (safe.length < count && free.length)
+    safe.push(free.splice(Math.floor(rng() * free.length), 1)[0]);
+  const cells = [];
+  for (let y = 1; y < 14; y++)
+    for (let x = 1; x < 14; x++)
+      if (!r.map[y][x] && !safe.some((c) => c.x === x && c.y === y))
+        cells.push({ x, y });
+  const durationMs =
+    def.kind === "mini" ? 4500 : e.hp < e.maxHp / 2 ? 2800 : 3500;
   return {
     cells,
+    safe,
     skill: def.skill,
     pattern: def.pattern,
-    remaining: ["cross", "laser"].includes(def.pattern) ? 1 : 2,
+    durationMs,
+    deadline: now + durationMs,
   };
 }
-// Linhas dão uma ação de esquiva; áreas maiores dão duas antes do impacto.
+export function pendingReaction(r) {
+  return r?.enemies.find((e) => e.intent?.deadline);
+}
+export function resolveGuardian(r, e, target, now, log, effects) {
+  const def = encounters[e.variant],
+    intent = e.intent;
+  if (!intent) return false;
+  const success =
+    now < intent.deadline &&
+    target &&
+    intent.safe.some((c) => c.x === target.x && c.y === target.y);
+  if (success) {
+    r.x = target.x;
+    r.y = target.y;
+  }
+  e.intent = null;
+  effects.push({
+    type: "enemy",
+    color: def.color,
+    from: { x: e.x, y: e.y },
+    targets: intent.cells,
+  });
+  if (!success) {
+    const damage = Math.max(
+      2,
+      Math.round(
+        e.atk *
+          (def.kind === "boss" ? 1.5 : 1.2) *
+          (e.hp < e.maxHp / 2 ? 1.2 : 1),
+      ) - Math.floor(r.def * 0.6),
+    );
+    r.hp -= damage;
+    const drain =
+      intent.pattern === "ice" ? 8 : intent.pattern === "pool" ? 4 : 0;
+    r.mana = Math.max(0, r.mana - drain);
+    log(
+      r,
+      `${target && now < intent.deadline ? "Casa errada" : "Tempo esgotado"}! ${def.skill}: ${damage} dano${drain ? ` e -${drain} mana` : ""}.`,
+    );
+  } else log(r, `Esquiva perfeita! Você escapou de ${def.skill}.`);
+  if (intent.pattern === "summon") {
+    let count = r.enemies.filter((v) => v.summoned).length;
+    // Drones nas proximidades do jogador, em vez de preencher a arena inteira.
+    for (const c of intent.cells.filter(
+      (c) => Math.max(Math.abs(c.x - r.x), Math.abs(c.y - r.y)) <= 3,
+    )) {
+      if (count >= 4) break;
+      if (
+        (c.x === r.x && c.y === r.y) ||
+        r.enemies.some((v) => v.x === c.x && v.y === c.y)
+      )
+        continue;
+      r.enemies.push({
+        ...c,
+        type: "bat",
+        summoned: true,
+        hp: 12 + r.floor * 2,
+        maxHp: 12 + r.floor * 2,
+        atk: 4 + Math.floor(r.floor * 0.8),
+        frozen: 0,
+      });
+      count++;
+    }
+  }
+  e.phase++;
+  return true;
+}
+// Durante o desafio, somente clique de esquiva ou prazo esgotado resolve o ataque.
 export function guardianTurn(r, e, log, effects) {
   if (!e.variant) return false;
   const def = encounters[e.variant];
-  if (e.intent) {
-    if (e.intent.remaining > 1) {
-      e.intent.remaining--;
-      log(
-        r,
-        `${e.intent.skill}: falta ${e.intent.remaining} ação para o impacto.`,
-      );
-      return true;
-    }
-    const intent = e.intent;
-    e.intent = null;
-    effects.push({
-      type: "enemy",
-      color: def.color,
-      from: { x: e.x, y: e.y },
-      targets: intent.cells,
-    });
-    if (intent.cells.some((c) => c.x === r.x && c.y === r.y)) {
-      const damage = Math.max(
-        2,
-        Math.round(
-          e.atk *
-            (def.kind === "boss" ? 1.5 : 1.2) *
-            (e.hp < e.maxHp / 2 ? 1.2 : 1),
-        ) - Math.floor(r.def * 0.6),
-      );
-      r.hp -= damage;
-      const drain =
-        intent.pattern === "ice" ? 8 : intent.pattern === "pool" ? 4 : 0;
-      r.mana = Math.max(0, r.mana - drain);
-      log(
-        r,
-        `${def.skill}: ${damage} de dano${drain ? ` e -${drain} mana` : ""}.`,
-      );
-    } else log(r, `Você evitou ${def.skill}.`);
-    if (intent.pattern === "summon") {
-      let count = r.enemies.filter((v) => v.summoned).length;
-      for (const c of intent.cells) {
-        if (count >= 4) break;
-        if (
-          (c.x === r.x && c.y === r.y) ||
-          r.enemies.some((v) => v.x === c.x && v.y === c.y)
-        )
-          continue;
-        r.enemies.push({
-          ...c,
-          type: "bat",
-          summoned: true,
-          hp: 12 + r.floor * 2,
-          maxHp: 12 + r.floor * 2,
-          atk: 4 + Math.floor(r.floor * 0.8),
-          frozen: 0,
-        });
-        count++;
-      }
-    }
-    e.phase++;
-    return true;
-  }
+  if (e.intent) return true;
   const frequency = e.hp < e.maxHp / 2 && def.kind === "boss" ? 2 : 3;
   if (e.phase % frequency === 0) {
     e.intent = mark(r, e);
-    log(r, `${e.name} prepara ${def.skill}. Saia das casas marcadas!`);
+    if (!e.intent) {
+      e.phase++;
+      return false;
+    }
+    log(r, `${e.name}: clique numa casa SEGURA antes do tempo acabar!`);
     e.phase++;
     return true;
   }

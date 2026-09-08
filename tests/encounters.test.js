@@ -7,6 +7,7 @@ import {
   act,
   purchase,
   migrate,
+  resolveReaction,
 } from "../src/engine.js";
 import { encounterKey, encounters } from "../src/encounters.js";
 function game(floor = 1) {
@@ -65,30 +66,65 @@ test("três minibosses e três chefes, arenas abertas e saída bloqueada", () =>
     assert.equal(r.floor, Number(floor) + 1);
   }
 });
-test("cada variante avisa antes de causar dano e permite esquiva", () => {
+test("cada variante exige clique em casa específica dentro do prazo", () => {
   for (const floor of [5, 10, 15, 20, 25, 30]) {
-    let p = game(floor),
+    const p = game(floor),
       r = p.run;
-    r.x = 4;
-    r.y = 3;
     r.hp = r.maxHp = 1000;
     act(p, "wait");
-    const boss = r.enemies[0];
-    assert.ok(boss.intent);
+    const intent = r.enemies[0].intent;
+    assert.ok(intent.safe.length >= 1);
+    assert.ok(intent.safe.every((c) => !r.map[c.y][c.x]));
+    assert.equal(act(p, "move", 1, 1), false);
+    assert.equal(act(p, "attack"), false);
+    const target = intent.safe[0];
+    assert.equal(resolveReaction(p, target, intent.deadline - 1), true);
     assert.equal(r.hp, 1000);
-    const count = boss.intent.remaining;
-    for (let i = 0; i < count; i++) act(p, "move", 1, -1);
-    assert.equal(r.hp, 1000, `esquiva ${floor}`);
-    p = game(floor);
+    assert.deepEqual([r.x, r.y], [target.x, target.y]);
+    assert.equal(r.enemies[0].intent, null);
+  }
+});
+test("timeout independente de turno causa dano uma única vez", () => {
+  const p = game(10),
     r = p.run;
-    r.x = 4;
-    r.y = 3;
+  r.hp = r.maxHp = 1000;
+  act(p, "wait");
+  const intent = r.enemies[0].intent,
+    turn = r.turn;
+  assert.equal(resolveReaction(p, null, intent.deadline - 1), false);
+  assert.equal(resolveReaction(p, null, intent.deadline), true);
+  assert.ok(r.hp < 1000);
+  assert.equal(r.turn, turn);
+  const hp = r.hp;
+  assert.equal(resolveReaction(p, null, intent.deadline + 500), false);
+  assert.equal(r.hp, hp);
+});
+test("casa errada ou clique atrasado acerta e não move o jogador", () => {
+  for (const late of [false, true]) {
+    const p = game(5),
+      r = p.run;
     r.hp = r.maxHp = 1000;
     act(p, "wait");
-    const n = r.enemies[0].intent.remaining;
-    for (let i = 0; i < n; i++) act(p, "wait");
-    assert.ok(r.hp < 1000, `impacto ${floor}`);
+    const intent = r.enemies[0].intent;
+    const target = late ? intent.safe[0] : { x: r.x, y: r.y };
+    resolveReaction(p, target, intent.deadline + (late ? 1 : -1));
+    assert.ok(r.hp < 1000);
+    assert.deepEqual([r.x, r.y], [1, 1]);
   }
+});
+test("prazo persiste no save e morte por timeout transfere fragmentos uma vez", () => {
+  const p = game(10);
+  p.run.hp = 1;
+  p.run.shards = 12;
+  act(p, "wait");
+  const deadline = p.run.enemies[0].intent.deadline;
+  const restored = migrate(JSON.parse(JSON.stringify(p)));
+  assert.equal(restored.run.enemies[0].intent.deadline, deadline);
+  resolveReaction(restored, null, deadline + 10000);
+  assert.equal(restored.run, null);
+  assert.equal(restored.bank, 12);
+  assert.equal(resolveReaction(restored, null, deadline + 20000), false);
+  assert.equal(restored.bank, 12);
 });
 test("ZERO drena mana; NEXUS invoca drones com limite e sem recompensa infinita", () => {
   const p = game(20),
@@ -98,13 +134,16 @@ test("ZERO drena mana; NEXUS invoca drones com limite e sem recompensa infinita"
   r.x = 3;
   r.y = 3;
   act(p, "wait");
-  act(p, "wait");
-  act(p, "wait");
+  resolveReaction(p, null, r.enemies[0].intent.deadline);
   assert.equal(r.mana, 20);
   const q = game(30),
     s = q.run;
   s.hp = s.maxHp = 10000;
-  for (let i = 0; i < 20; i++) act(q, "wait");
+  for (let i = 0; i < 20; i++) {
+    act(q, "wait");
+    const boss = s.enemies.find((e) => e.intent);
+    if (boss) resolveReaction(q, null, boss.intent.deadline);
+  }
   assert.ok(s.enemies.some((e) => e.summoned));
   assert.ok(s.enemies.filter((e) => e.summoned).length <= 4);
   const drone = s.enemies.find((e) => e.summoned);
@@ -121,13 +160,11 @@ test("ZERO drena mana; NEXUS invoca drones com limite e sem recompensa infinita"
   act(q, "attack");
   assert.deepEqual([s.gold, s.xp, s.shards], [gold, xp, shards]);
 });
-test("matar chefe cancela ataque marcado e concede recompensa uma vez", () => {
+test("matar chefe fora do desafio concede recompensa uma vez", () => {
   const p = game(5),
     r = p.run,
     boss = r.enemies[0];
   r.hp = r.maxHp = 1000;
-  act(p, "wait");
-  assert.ok(boss.intent);
   r.x = 6;
   r.y = 7;
   boss.hp = 1;
@@ -158,4 +195,17 @@ test("novos inimigos são mais fortes que a versão anterior e escalam por andar
   r.floor = 9;
   generate(r);
   assert.ok(r.enemies.every((e) => e.hp > 46 && e.atk > 14));
+});
+
+test("fúria reduz janela e casas seguras não são sempre diagonais", async () => {
+  const { mark } = await import("../src/encounters.js");
+  const p = game(10),
+    r = p.run,
+    boss = r.enemies[0];
+  r.x = r.y = 6;
+  const normal = mark(r, boss, 1000, () => 0);
+  assert.equal(normal.durationMs, 3500);
+  assert.ok(normal.safe.some((c) => c.x === r.x || c.y === r.y));
+  boss.hp = 1;
+  assert.equal(mark(r, boss, 1000, () => 0).durationMs, 2800);
 });

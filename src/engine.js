@@ -3,6 +3,8 @@ import {
   encounterKey,
   makeGuardian,
   guardianTurn,
+  pendingReaction,
+  resolveGuardian,
 } from "./encounters.js";
 export const SIZE = 15;
 export const spells = {
@@ -120,6 +122,10 @@ export function migrate(p) {
     );
     p.run.enemies.forEach((e) => {
       e.frozen ??= 0;
+      if (e.intent && !e.intent.deadline) {
+        e.intent = null;
+        e.phase = 0;
+      }
       if (e.type === "boss" && !e.variant) {
         const guardian = makeGuardian(p.run.floor, e.x, e.y);
         Object.assign(e, {
@@ -391,9 +397,34 @@ function hit(r, e, m = 1) {
     gain(r, 5 + r.floor * 2);
   }
 }
+function finishDeath(p) {
+  const r = p.run;
+  if (r.hp <= 0) {
+    p.bank += r.shards;
+    p.runs++;
+    p.best = Math.max(p.best, r.floor);
+    p.last = { floor: r.floor, kills: r.kills, shards: r.shards, turn: r.turn };
+    p.run = null;
+  }
+}
+export function resolveReaction(
+  p,
+  target = null,
+  now = Date.now(),
+  effects = [],
+) {
+  const r = p.run,
+    e = pendingReaction(r);
+  if (!e) return false;
+  // Um timeout antecipado não pode resolver o ataque.
+  if (!target && now < e.intent.deadline) return false;
+  resolveGuardian(r, e, target, now, log, effects);
+  finishDeath(p);
+  return true;
+}
 export function act(p, action, dx = 0, dy = 0, effects = []) {
   let r = p.run;
-  if (!r || r.choices) return false;
+  if (!r || pendingReaction(r) || r.choices) return false;
   let used = false;
 
   if (action === "move") {
@@ -496,6 +527,7 @@ export function act(p, action, dx = 0, dy = 0, effects = []) {
       continue;
     }
     if (guardianTurn(r, e, log, effects)) {
+      if (e.intent) break;
       if (r.hp <= 0) break;
       continue;
     }
@@ -545,13 +577,7 @@ export function act(p, action, dx = 0, dy = 0, effects = []) {
     }
     if (r.hp <= 0) break;
   }
-  if (r.hp <= 0) {
-    p.bank += r.shards;
-    p.runs++;
-    p.best = Math.max(p.best, r.floor);
-    p.last = { floor: r.floor, kills: r.kills, shards: r.shards, turn: r.turn };
-    p.run = null;
-  }
+  finishDeath(p);
   return true;
 }
 export function purchase(r, k) {
@@ -559,7 +585,8 @@ export function purchase(r, k) {
   if (
     r.gold < price ||
     !["potion", "mana", "training", "armor"].includes(k) ||
-    r.choices
+    r.choices ||
+    pendingReaction(r)
   )
     return false;
   r.gold -= price;

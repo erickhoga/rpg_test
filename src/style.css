@@ -902,3 +902,107 @@ button:hover:not(:disabled) {
     font-size: 10px;
   }
 }
+
+body.reacting {
+  overflow: hidden;
+}
+.reaction-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #090b18f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  overscroll-behavior: contain;
+}
+.reaction-heading {
+  text-align: center;
+  width: min(650px, 96vw);
+}
+.reaction-heading > span {
+  color: #ff83ad;
+  letter-spacing: 2px;
+  font-size: 12px;
+}
+.reaction-heading h2 {
+  color: #afffcc;
+  font-size: clamp(17px, 3vw, 27px);
+  margin: 5px 0;
+}
+.reaction-clock {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 10px;
+  color: #ff608a;
+}
+.reaction-clock b {
+  font:
+    700 clamp(40px, 6vh, 68px) "Space Grotesk",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  text-shadow: 0 0 24px #ff467c70;
+}
+.reaction-clock small {
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+.reaction-progress {
+  height: 9px;
+  background: #402032;
+  margin-top: 7px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.reaction-progress i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ff5a93, #ffb26d);
+}
+.reaction-heading p {
+  margin: 6px 0;
+  color: #ddd7e9;
+  font-size: 11px;
+}
+#reaction-board {
+  width: min(68vh, 94vw);
+  width: min(65dvh, 94vw);
+  height: auto;
+  max-height: 65dvh;
+  aspect-ratio: 1;
+  border: 2px solid #ff608a;
+  cursor: crosshair;
+  touch-action: none;
+  flex-shrink: 1;
+  min-height: 0;
+  object-fit: contain;
+}
+.reaction-hint {
+  text-align: center;
+  color: #bac1d8;
+  font-size: 11px;
+  max-width: 650px;
+}
+@media (max-height: 550px) {
+  .reaction-heading p,
+  .reaction-hint {
+    display: none;
+  }
+  .reaction-heading h2 {
+    font-size: 15px;
+  }
+  .reaction-clock b {
+    font-size: 32px;
+  }
+  .reaction-overlay {
+    gap: 4px;
+  }
+  .reaction-heading > span {
+    font-size: 9px;
+  }
+}
