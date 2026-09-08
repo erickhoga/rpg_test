@@ -1,3 +1,9 @@
+import {
+  arena,
+  encounterKey,
+  makeGuardian,
+  guardianTurn,
+} from "./encounters.js";
 export const SIZE = 15;
 export const spells = {
   burst: {
@@ -6,10 +12,10 @@ export const spells = {
     key: "1",
     level: 1,
     range: 1,
-    damage: 2,
-    cooldown: 3,
+    damage: 1.7,
+    mana: 8,
     color: "#ff51d6",
-    detail: "Todos adjacentes · 2× dano",
+    detail: "Todos adjacentes · 1,7× dano",
   },
   nova: {
     name: "Nova de plasma",
@@ -17,10 +23,10 @@ export const spells = {
     key: "2",
     level: 4,
     range: 3,
-    damage: 1.6,
-    cooldown: 5,
+    damage: 1.3,
+    mana: 16,
     color: "#bd7aff",
-    detail: "Área visível de 3 casas · 1,6× dano",
+    detail: "Área visível de 3 casas · 1,3× dano",
   },
   bolt: {
     name: "Disparo iônico",
@@ -28,8 +34,8 @@ export const spells = {
     key: "4",
     level: 1,
     range: 6,
-    damage: 1.4,
-    cooldown: 2,
+    damage: 1.15,
+    mana: 7,
     color: "#38edff",
     detail: "Alvo visível mais próximo · 6 casas",
   },
@@ -39,8 +45,8 @@ export const spells = {
     key: "5",
     level: 2,
     range: 5,
-    damage: 1,
-    cooldown: 4,
+    damage: 0.8,
+    mana: 11,
     color: "#8bbcff",
     detail: "5 casas · congela por 2 ações",
   },
@@ -50,8 +56,8 @@ export const spells = {
     key: "6",
     level: 3,
     range: 5,
-    damage: 1.2,
-    cooldown: 4,
+    damage: 1,
+    mana: 14,
     color: "#efff65",
     detail: "5 casas · salta até 3 alvos (3 casas)",
   },
@@ -103,13 +109,26 @@ export function migrate(p) {
     ...p.upgrades,
   };
   if (p.run) {
-    p.run.cooldowns ??= { burst: p.run.cd || 0, nova: p.run.cd || 0 };
+    p.run.maxMana ??= 28 + (p.run.level - 1) * 2;
+    p.run.mana ??= p.run.maxMana;
+    p.run.manaPotions ??= 1;
+    p.run.arena ??= null;
+    delete p.run.cooldowns;
     delete p.run.cd;
     p.run.skillRanks = Object.fromEntries(
       Object.keys(spells).map((k) => [k, p.upgrades[`skill_${k}`]]),
     );
     p.run.enemies.forEach((e) => {
       e.frozen ??= 0;
+      if (e.type === "boss" && !e.variant) {
+        const guardian = makeGuardian(p.run.floor, e.x, e.y);
+        Object.assign(e, {
+          variant: guardian.variant,
+          name: guardian.name,
+          phase: 0,
+          intent: null,
+        });
+      }
     });
   }
   return p;
@@ -227,7 +246,9 @@ export function start(p, floor = 1) {
     shards: 0,
     kills: 0,
     potions: 2 + p.upgrades.flask,
-    cooldowns: {},
+    maxMana: 28,
+    mana: 28,
+    manaPotions: 1,
     skillRanks: Object.fromEntries(
       Object.keys(spells).map((k) => [k, p.upgrades[`skill_${k}`]]),
     ),
@@ -247,6 +268,11 @@ export function log(r, s) {
 export function generate(r, rng = Math.random) {
   r.x = 1;
   r.y = 1;
+  r.arena = null;
+  if (encounterKey(r.floor)) {
+    arena(r);
+    return;
+  }
   r.map = Array.from({ length: SIZE }, () => Array(SIZE).fill(1));
   // DFS aléatorio conecta todas as células; salas e atalhos abrem variações.
   const stack = [{ x: 1, y: 1 }];
@@ -302,20 +328,22 @@ export function generate(r, rng = Math.random) {
   function spot() {
     return free.splice(Math.floor(rng() * free.length), 1)[0];
   }
-  for (let i = 0; i < Math.min(4 + Math.floor(r.floor * 0.8), 19); i++) {
-    let boss = r.floor % 5 === 0 && i === 0;
-    let hp = Math.round((10 + r.floor * 4) * (boss ? 3 : 1));
+  for (let i = 0; i < Math.min(5 + Math.floor(r.floor * 1.1), 22); i++) {
+    let hp = 17 + r.floor * 5;
     r.enemies.push({
       ...spot(),
       frozen: 0,
       hp,
       maxHp: hp,
-      atk: 3 + Math.floor(r.floor * 1.3),
-      type: boss ? "boss" : i % 3 === 0 ? "bat" : "slime",
+      atk: 5 + Math.floor(r.floor * 1.5),
+      type: i % 3 === 0 ? "bat" : "slime",
     });
   }
   for (let i = 0; i < 4; i++)
-    r.items.push({ ...spot(), type: i === 0 ? "potion" : "gold" });
+    r.items.push({
+      ...spot(),
+      type: i === 0 ? "potion" : i === 1 ? "mana" : "gold",
+    });
 }
 export function need(r) {
   return 12 + r.level * 8;
@@ -326,8 +354,10 @@ export function gain(r, n) {
     r.xp -= need(r);
     r.level++;
     r.maxHp += 4;
-    r.hp = Math.min(r.maxHp, r.hp + 12);
+    r.hp = Math.min(r.maxHp, r.hp + 6);
     r.atk++;
+    r.maxMana += 2;
+    r.mana = Math.min(r.maxMana, r.mana + 2);
     r.choices++;
     log(r, `Nível ${r.level}! Escolha uma bênção.`);
   }
@@ -335,9 +365,9 @@ export function gain(r, n) {
 export function choose(r, k) {
   if (!r.choices) return false;
   if (k === "vigor") {
-    r.maxHp += 8;
-    r.hp += 8;
-  } else if (k === "force") r.atk += 2;
+    r.maxHp += 6;
+    r.hp += 6;
+  } else if (k === "force") r.atk += 1;
   else if (k === "armor") r.def++;
   else return false;
   r.choices--;
@@ -348,21 +378,24 @@ function hit(r, e, m = 1) {
   e.hp -= damage;
   log(
     r,
-    `${e.type === "boss" ? "Guardião" : "Criatura"} sofreu ${damage} de dano.`,
+    `${e.name || (e.type === "boss" ? "Guardião" : "Criatura")} sofreu ${damage} de dano.`,
   );
   if (e.hp <= 0) {
     r.enemies = r.enemies.filter((v) => v !== e);
     r.kills++;
+    if (e.type === "boss")
+      log(r, `${e.name || "Guardião"} derrotado! Passagem liberada.`);
+    if (e.summoned) return;
     r.gold += 5 + r.floor * 2;
     r.shards += e.type === "boss" ? 10 + r.floor : 1 + Math.floor(r.floor / 3);
-    gain(r, 5 + r.floor * 3);
+    gain(r, 5 + r.floor * 2);
   }
 }
 export function act(p, action, dx = 0, dy = 0, effects = []) {
   let r = p.run;
   if (!r || r.choices) return false;
   let used = false;
-  r.cooldowns ??= {};
+
   if (action === "move") {
     if (!canStep(r.map, r, { x: r.x + dx, y: r.y + dy })) return false;
     let x = r.x + dx,
@@ -388,7 +421,11 @@ export function act(p, action, dx = 0, dy = 0, effects = []) {
   }
   if (spells[action]) {
     const spell = spells[action];
-    if ((r.cooldowns[action] || 0) > 0 || r.level < spell.level) return false;
+    if (r.level < spell.level) return false;
+    if (r.mana < spell.mana) {
+      log(r, `Mana insuficiente: ${spell.mana} necessária.`);
+      return false;
+    }
     const targets = targetsFor(r, action);
     if (!targets.length) {
       log(r, "Nenhum alvo visível ao alcance. Paredes bloqueiam poderes.");
@@ -402,9 +439,9 @@ export function act(p, action, dx = 0, dy = 0, effects = []) {
     });
     for (const e of targets) {
       hit(r, e, spell.damage * (1 + 0.2 * (r.skillRanks?.[action] || 0)));
-      if (action === "frost" && e.hp > 0) e.frozen = 2;
+      if (action === "frost" && e.hp > 0) e.frozen = e.type === "boss" ? 1 : 2;
     }
-    r.cooldowns[action] = spell.cooldown + 1;
+    r.mana -= spell.mana;
     used = true;
   }
   if (action === "potion") {
@@ -412,6 +449,13 @@ export function act(p, action, dx = 0, dy = 0, effects = []) {
     r.potions--;
     r.hp = Math.min(r.maxHp, r.hp + 25);
     log(r, "Poção restaurou até 25 de vida.");
+    used = true;
+  }
+  if (action === "mana") {
+    if (!r.manaPotions || r.mana >= r.maxMana) return false;
+    r.manaPotions--;
+    r.mana = Math.min(r.maxMana, r.mana + 14);
+    log(r, "Poção restaurou até 14 de mana.");
     used = true;
   }
   if (action === "descend") {
@@ -424,20 +468,22 @@ export function act(p, action, dx = 0, dy = 0, effects = []) {
     p.best = Math.max(p.best, r.floor);
     r.shards += 2;
     r.gold += r.floor * 3;
-    r.hp = Math.min(r.maxHp, r.hp + 8);
+    r.hp = Math.min(r.maxHp, r.hp + 4);
     generate(r);
     log(r, `Andar ${r.floor}. A escuridão fica mais forte.`);
     used = true;
   }
   if (!used) return false;
   r.turn++;
-  for (const key of Object.keys(r.cooldowns))
-    r.cooldowns[key] = Math.max(0, r.cooldowns[key] - 1);
+  r.mana = Math.min(r.maxMana, r.mana + 1);
   let item = r.items.find((i) => i.x === r.x && i.y === r.y);
   if (item) {
     if (item.type === "potion") {
       r.potions++;
       log(r, "Você encontrou uma poção.");
+    } else if (item.type === "mana") {
+      r.manaPotions++;
+      log(r, "Você encontrou uma poção de mana.");
     } else {
       r.gold += 8 + r.floor * 2;
       log(r, "Você recolheu moedas antigas.");
@@ -449,12 +495,16 @@ export function act(p, action, dx = 0, dy = 0, effects = []) {
       e.frozen--;
       continue;
     }
+    if (guardianTurn(r, e, log, effects)) {
+      if (r.hp <= 0) break;
+      continue;
+    }
     let dist = distance(e, r);
     if (dist === 1 && canStep(r.map, e, r)) {
       let damage = Math.max(1, e.atk - r.def);
       r.hp -= damage;
       log(r, `Você recebeu ${damage} de dano.`);
-    } else if (dist <= 7 || e.type === "boss") {
+    } else if (dist <= 10 || e.type === "boss") {
       let queue = [{ x: r.x, y: r.y }],
         seen = new Set([`${r.x},${r.y}`]),
         found;
@@ -505,15 +555,16 @@ export function act(p, action, dx = 0, dy = 0, effects = []) {
   return true;
 }
 export function purchase(r, k) {
-  let price = k === "potion" ? 20 : k === "training" ? 30 : 45;
+  let price = { potion: 28, mana: 24, training: 40, armor: 60 }[k];
   if (
     r.gold < price ||
-    !["potion", "training", "armor"].includes(k) ||
+    !["potion", "mana", "training", "armor"].includes(k) ||
     r.choices
   )
     return false;
   r.gold -= price;
   if (k === "potion") r.potions++;
+  if (k === "mana") r.manaPotions++;
   if (k === "training") gain(r, 15);
   if (k === "armor") r.def++;
   log(r, "Compra concluída no mercador.");

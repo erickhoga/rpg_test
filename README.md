@@ -13,12 +13,9 @@ Abra http://localhost:5173. `npm test` executa os testes; `npm run build` gera `
 
 ## Jogo
 
-- Mapa procedural conectado de 15 × 15. Cada passo válido, ataque, espera ou poder permite uma ação de cada inimigo. Ações indisponíveis não gastam turno.
-- XP aumenta nível, vida e ataque e permite escolher bônus de vida, ataque ou defesa. Golpe rúnico inicial; Nova ancestral no nível 4. Cada poder tem sua própria recarga.
-- Dificuldade, XP e moedas crescem por andar. Chefes a cada cinco andares bloqueiam a saída até morrerem. Descer recupera 8 de vida.
-- Mercador vende poção, XP e defesa com moedas da run. Comprar e escolher bônus não gasta turno.
-- Morte transfere fragmentos para a carteira permanente. A loja do santuário melhora vida, ataque, manto, poções e atalhos. Atalhos respeitam seu recorde. Moedas, nível e poderes temporários recomeçam.
-- WASD/setas movem; encostar no inimigo ataca. Espaço ataca, 1/2 poderes, 3 poção, Enter desce e ponto espera. Há botões para todas as ações.
+RPG em grade 15 × 15: uma ação válida do jogador permite uma ação de cada inimigo. WASD/setas movem; QEZC fazem diagonais; Espaço ataca; Enter desce; ponto espera. Poderes nas teclas 1, 2, 4, 5 e 6; poção vital em 3; poção de mana em 7. Há controles de toque. Paredes e quinas bloqueiam movimento e poderes.
+
+XP aumenta nível e atributos e libera poderes. Escolhas de nível e melhorias permanentes personalizam a build. Moedas compram itens, XP e defesa durante a run. Fragmentos são transferidos para a carteira permanente **na morte** e compram melhorias no santuário. Vencer um chefe concede fragmentos da run e abre a escada; não abre a loja permanente.
 
 ## Ativar Supabase
 
@@ -56,16 +53,41 @@ O Supabase ainda depende da execução de `supabase-schema.sql` no painel do pro
 
 Referência: [Publicar a partir de uma branch](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
-## Neon Update 02
+## Mana & Bosses 03
 
-- Tema neon ciano, magenta e violeta no mapa e interface.
-- WASD/setas e Q/E/Z/C para diagonais. Diagonais não atravessam quinas de paredes. Inimigos seguem a mesma regra. Enter desce na escada (E agora move para cima e direita).
-- Labirintos procedurais: busca em profundidade aleatória, salas e passagens extras. Todos os pisos e a escada permanecem conectados. Runs antigas preservam seu mapa até descer.
-- Pulso neon (1): 2× dano nos adjacentes, recarga 3. Nova de plasma (2, nível 4): 1,6× em área visível de 3 casas, recarga 5.
-- Disparo iônico (4): 1,4× dano, alcance 6, recarga 2. Lança criogênica (5, nível 2): 1× dano, alcance 5, congela por duas ações inimigas, recarga 4. Arco elétrico (6, nível 3): 1,2× dano, alcance inicial 5, salta até três alvos com no máximo três casas entre eles, recarga 4.
-- Distância em casas considera diagonais. Projéteis miram o inimigo visível mais próximo. Paredes bloqueiam tiros, saltos e poderes em área. Atalhos de teclado e botões são bloqueados durante a animação; preferência de movimento reduzido desativa os efeitos.
-- Cada poder pode receber até cinco melhorias permanentes de +20% de dano base por nível, compradas com fragmentos no santuário. Recargas indicam quantas outras ações são necessárias até poder reutilizar.
-- Saves antigos recebem os campos novos automaticamente, sem reiniciar o personagem.
+### Dificuldade e mana
+
+- Inimigos comuns: vida `17 + andar × 5`, ataque `5 + floor(andar × 1,5)`, maior quantidade e perseguição até 10 casas. Novos atributos aparecem na próxima geração de andar; inimigos já salvos mantêm seus atributos.
+- Cura por nível reduzida para 6 e por descida para 4. Bênçãos dão +6 vida, +1 ataque ou +1 defesa. XP por criatura reduzido. Loja: poção vital 28 moedas, mana 24, XP 40 e defesa 60.
+- Recargas do jogador removidas. Mana inicial 28; +2 de capacidade por nível, +1 regenerada em cada ação válida, inclusive lançar poder e beber poção. Ações inválidas, compras e escolhas de bônus não regeneram mana.
+- Poção azul recupera até 14 mana; começa com uma, pode encontrar no chão ou comprar. Usar a poção gasta turno. A capacidade nunca é ultrapassada.
+
+| Poder            | Tecla | Nível | Mana | Dano base | Efeito                                                   |
+| ---------------- | ----- | ----- | ---- | --------- | -------------------------------------------------------- |
+| Pulso neon       | 1     | 1     | 8    | 1,7×      | Adjacentes                                               |
+| Nova de plasma   | 2     | 4     | 16   | 1,3×      | Área visível de 3 casas                                  |
+| Disparo iônico   | 4     | 1     | 7    | 1,15×     | Alvo visível mais próximo, 6 casas                       |
+| Lança criogênica | 5     | 2     | 11   | 0,8×      | 5 casas; congela 2 ações (chefes: 1)                     |
+| Arco elétrico    | 6     | 3     | 14   | 1×        | Alcance inicial 5, até 3 alvos com saltos de até 3 casas |
+
+Upgrades permanentes de habilidades continuam: cinco níveis de +20% de dano base cada. Projéteis têm animação; ações ficam bloqueadas durante o efeito. Movimento reduzido desativa efeitos.
+
+### Arenas
+
+Andares comuns usam labirintos procedurais conectados, com salas e atalhos. Múltiplos de 5 usam arenas abertas com pilares, poção vital e mana. A escada só abre após matar o guardião. Padrões se repetem com atributos progressivos:
+
+| Andares | Encontro            | Poder                                     |
+| ------- | ------------------- | ----------------------------------------- |
+| 5, 35…  | Sentinela de choque | Cruz de choque                            |
+| 15, 45… | Alquimista tóxico   | Poça corrosiva e dreno de 4 mana          |
+| 25, 55… | Demolidor neon      | Impacto sísmico em área                   |
+| 10, 40… | PRISMA              | Laser na linha e coluna marcadas          |
+| 20, 50… | ZERO                | Ruptura glacial em área e dreno de 8 mana |
+| 30, 60… | NEXUS               | Fendas explosivas e invocação de drones   |
+
+Casas marcadas são fixadas antes do impacto: linhas dão uma ação de esquiva e áreas maiores duas. A barra do chefe mostra o contador. Chefes maiores abaixo de metade da vida entram em fúria, com habilidades mais frequentes e fortes. Invocações têm limite de quatro drones ativos e não rendem moedas, fragmentos ou XP, evitando farm infinito. Matar o chefe cancela seu ataque pendente; drones restantes não bloqueiam a escada.
+
+Saves antigos recebem mana automaticamente, mantendo recursos gastos em acessos futuros. Guardiões antigos recebem variante e habilidades sem reiniciar seu mapa; arenas novas aparecem ao descer ou começar outra run.
 
 ## PNGs e sprites
 
@@ -73,6 +95,6 @@ Coloque os arquivos em `public/sprites/` e edite `src/sprites.js`. Configure cad
 
 ## Verificação
 
-19 testes de combate, progressão, labirinto, migração e persistência. Teste Chromium com diagonais QEZC, Enter na escada, projétil e bloqueio de ações durante animação, compra de melhoria e layout mobile sem overflow. Screenshots inspecionadas em desktop e celular. Integração de banco real continua pendente do SQL.
+26 testes de combate, mana, encontros, progressão, labirinto, migração e persistência. Teste Chromium com diagonais QEZC, Enter na escada, projétil e bloqueio de ações durante animação, compra de melhoria, poção de mana, loja, aviso do chefe, bloqueio da escada e layout mobile sem overflow. Screenshots inspecionadas em desktop e celular. Integração de banco real continua pendente do SQL.
 
 Para repetir o teste de navegador, execute o servidor na porta 5173 e, em outro terminal, `node scripts/check-browser.mjs`. Requer Chromium e dependências (`npx playwright install --with-deps chromium`). O teste intercepta Supabase e usa um personagem local, sem gravar no banco.

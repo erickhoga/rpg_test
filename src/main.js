@@ -13,6 +13,7 @@ import {
   upgrades,
   purchase,
 } from "./engine.js";
+import { encounters } from "./encounters.js";
 import { drawSprite } from "./sprites.js";
 import { Save, normalize } from "./save.js";
 const app = document.querySelector("#app");
@@ -37,7 +38,7 @@ const escape = (s) =>
   );
 function frame(content) {
   cancelAnimationFrame(animationFrame);
-  app.innerHTML = `<header><a class="brand" href="./"><span class="brand-icon">✦</span><span>RAIZ PROFUNDA<small>UM PASSO. UM DESTINO.</small></span></a><span class="tag">ROGUELITE POR TURNOS</span><span class="online"><i></i> ${p ? escape(p.name) : "PRONTO PARA EXPLORAR"}</span></header>${content}<footer><span>RAIZ PROFUNDA <b> / </b> NEON UPDATE 02</span><span id="sync">${status}</span></footer>`;
+  app.innerHTML = `<header><a class="brand" href="./"><span class="brand-icon">✦</span><span>RAIZ PROFUNDA<small>UM PASSO. UM DESTINO.</small></span></a><span class="tag">ROGUELITE POR TURNOS</span><span class="online"><i></i> ${p ? escape(p.name) : "PRONTO PARA EXPLORAR"}</span></header>${content}<footer><span>RAIZ PROFUNDA <b> / </b> MANA & BOSSES 03</span><span id="sync">${status}</span></footer>`;
 }
 function login() {
   frame(
@@ -68,7 +69,7 @@ function render() {
   if (!p.run) return camp();
   let r = p.run;
   frame(
-    `<main><div class="heading"><div><div class="eyebrow">EXPEDIÇÃO ${String(p.runs + 1).padStart(2, "0")} / ${r.floor % 5 === 0 ? "CÂMARA DO GUARDIÃO" : "LABIRINTO NEON"}</div><h1>O caminho é para baixo<span>.</span></h1></div><button data-do="camp">☷ ${screen === "shop" ? "Voltar ao mapa" : "Mercador"}</button></div><div class="game-layout"><aside><section class="panel hero-panel"><div class="eyebrow">SEU EXPLORADOR</div><div class="portrait"><span class="avatar-core"></span></div><h2>${escape(p.name)}</h2><span class="pill">NÍVEL ${r.level} · ERRANTE</span><div class="meter-label"><span>♥ Vitalidade</span><b>${r.hp} / ${r.maxHp}</b></div><div class="meter"><i style="width:${(100 * r.hp) / r.maxHp}%"></i></div><div class="meter-label"><span>✧ Experiência</span><b>${r.xp} / ${need(r)}</b></div><div class="meter xp"><i style="width:${(100 * r.xp) / need(r)}%"></i></div><div class="stats"><div>⚔<b>${r.atk}</b><small>ATAQUE</small></div><div>◇<b>${r.def}</b><small>DEFESA</small></div><div>◉<b>${r.gold}</b><small>MOEDAS</small></div></div></section><section class="panel mission"><div class="eyebrow">SUA PRÓXIMA ETAPA</div><h3>Encontre a passagem</h3><p>${r.floor % 5 === 0 ? "Derrote o guardião e alcance" : "Alcance"} a escada neon para descer. Cada andar traz desafios maiores.</p><div class="record">♜ Recorde <b>Andar ${p.best}</b></div></section></aside><section class="board-panel"><div class="board-head"><div><span class="floor-symbol">▱</span><b>ANDAR ${String(r.floor).padStart(2, "0")}</b><span class="biome"> / Circuitos instáveis</span></div><span class="turn">TURNO ${r.turn}</span></div>${screen === "shop" ? shop(r) : '<canvas id="board" width="720" height="720" aria-label="Masmorra em grade. Use WASD e QEZC ou os botões para mover seu explorador."></canvas>'}<div class="board-foot"><span><i class="dot"></i> SEU TURNO <small>· Pense. Explore. Sobreviva.</small></span><button data-action="descend" ${r.x === 13 && r.y === 13 ? "" : "disabled"}>Descer ↵</button></div><div class="controls"><span><kbd>W A S D</kbd> / setas · <kbd>Q E Z C</kbd> diagonais · <kbd>Enter</kbd> desce<br>Poderes à distância miram o inimigo visível mais próximo.</span><div class="dpad">${[
+    `<main><div class="heading"><div><div class="eyebrow">EXPEDIÇÃO ${String(p.runs + 1).padStart(2, "0")} / ${r.floor % 5 === 0 ? "CÂMARA DO GUARDIÃO" : "LABIRINTO NEON"}</div><h1>O caminho é para baixo<span>.</span></h1></div><button data-do="camp">☷ ${screen === "shop" ? "Voltar ao mapa" : "Mercador"}</button></div><div class="game-layout"><aside><section class="panel hero-panel"><div class="eyebrow">SEU EXPLORADOR</div><div class="portrait"><span class="avatar-core"></span></div><h2>${escape(p.name)}</h2><span class="pill">NÍVEL ${r.level} · ERRANTE</span><div class="meter-label"><span>♥ Vitalidade</span><b>${r.hp} / ${r.maxHp}</b></div><div class="meter"><i style="width:${(100 * r.hp) / r.maxHp}%"></i></div><div class="meter-label"><span>◈ Mana · +1/turno</span><b id="mana-value">${r.mana} / ${r.maxMana}</b></div><div class="meter mana"><i style="width:${(100 * r.mana) / r.maxMana}%"></i></div><div class="meter-label"><span>✧ Experiência</span><b>${r.xp} / ${need(r)}</b></div><div class="meter xp"><i style="width:${(100 * r.xp) / need(r)}%"></i></div><div class="stats"><div>⚔<b>${r.atk}</b><small>ATAQUE</small></div><div>◇<b>${r.def}</b><small>DEFESA</small></div><div>◉<b>${r.gold}</b><small>MOEDAS</small></div></div></section><section class="panel mission"><div class="eyebrow">SUA PRÓXIMA ETAPA</div><h3>Encontre a passagem</h3><p>${r.floor % 5 === 0 ? "Derrote o guardião e alcance" : "Alcance"} a escada neon para descer. Cada andar traz desafios maiores.</p><div class="record">♜ Recorde <b>Andar ${p.best}</b></div></section></aside><section class="board-panel"><div class="board-head"><div><span class="floor-symbol">▱</span><b>ANDAR ${String(r.floor).padStart(2, "0")}</b><span class="biome"> / Circuitos instáveis</span></div><span class="turn">TURNO ${r.turn}</span></div>${bossPanel(r)}${screen === "shop" ? shop(r) : '<canvas id="board" width="720" height="720" aria-label="Masmorra em grade. Use WASD e QEZC ou os botões para mover seu explorador."></canvas>'}<div class="board-foot"><span><i class="dot"></i> SEU TURNO <small>· Pense. Explore. Sobreviva.</small></span><button data-action="descend" ${r.x === 13 && r.y === 13 && !r.enemies.some((e) => e.type === "boss") ? "" : "disabled"}>Descer ↵</button></div><div class="controls"><span><kbd>W A S D</kbd> / setas · <kbd>Q E Z C</kbd> diagonais · <kbd>Enter</kbd> desce<br>Poderes à distância miram o inimigo visível mais próximo.</span><div class="dpad">${[
       [-1, -1, "↖", "Q"],
       [0, -1, "↑", "W"],
       [1, -1, "↗", "E"],
@@ -95,20 +96,18 @@ function render() {
           spell.name,
           r.level < spell.level
             ? `Libera no nível ${spell.level}`
-            : r.cooldowns[key]
-              ? `Recarga: ${r.cooldowns[key]} turnos`
-              : `${spell.detail} · bônus +${20 * (r.skillRanks[key] || 0)}%`,
+            : `${spell.mana} mana · ${spell.detail} · bônus +${20 * (r.skillRanks[key] || 0)}%`,
           spell.key,
-          r.level < spell.level || r.cooldowns[key] > 0,
+          r.level < spell.level || r.mana < spell.mana,
         ),
       )
       .join(
         "",
-      )}${ability("potion", "⚗", "Poção vital", `${r.potions} disponíveis · +25 vida`, "3", !r.potions || r.hp === r.maxHp)}${ability("wait", "◷", "Esperar", "Passa um turno", ".")} </div></section><section class="panel journal"><div class="eyebrow">DIÁRIO DA EXPEDIÇÃO</div>${r.log.map((l, i) => `<p class="${i === 0 ? "latest" : ""}">${escape(l)}</p>`).join("")}</section><div class="shards">✧ <strong>${r.shards}</strong><span>fragmentos nesta run<small>Guardados quando você cair.</small></span></div></aside></div></main>${
+      )}${ability("potion", "⚗", "Poção vital", `${r.potions} disponíveis · +25 vida`, "3", !r.potions || r.hp === r.maxHp)}${ability("mana", "◈", "Poção de mana", `${r.manaPotions} disponíveis · +14 mana`, "7", !r.manaPotions || r.mana === r.maxMana)}${ability("wait", "◷", "Esperar", "Passa um turno", ".")} </div></section><section class="panel journal"><div class="eyebrow">DIÁRIO DA EXPEDIÇÃO</div>${r.log.map((l, i) => `<p class="${i === 0 ? "latest" : ""}">${escape(l)}</p>`).join("")}</section><div class="shards">✧ <strong>${r.shards}</strong><span>fragmentos nesta run<small>Guardados quando você cair.</small></span></div></aside></div></main>${
       r.choices
         ? `<div class="overlay"><section class="panel choice"><div class="eyebrow">NÍVEL ${r.level} · ${r.choices} ESCOLHA(S)</div><h2>As raízes te fortalecem.</h2><p>Escolha uma bênção para esta expedição.</p><div>${[
-            ["vigor", "♥ Vitalidade", "+8 de vida máxima"],
-            ["force", "⚔ Ferocidade", "+2 de ataque"],
+            ["vigor", "♥ Vitalidade", "+6 de vida máxima"],
+            ["force", "⚔ Ferocidade", "+1 de ataque"],
             ["armor", "◇ Proteção", "+1 de defesa"],
           ]
             .map(
@@ -122,14 +121,21 @@ function render() {
   if (screen !== "shop") startDrawing(r);
   bind();
 }
+function bossPanel(r) {
+  const boss = r.enemies.find((e) => e.type === "boss" && e.variant);
+  if (!boss) return "";
+  const def = encounters[boss.variant];
+  return `<section class="boss-panel" style="--boss-color:${def.color}"><div><b>${def.kind === "boss" ? "CHEFE" : "MINIBOSS"} · ${def.name}</b><span>${boss.hp} / ${boss.maxHp} HP</span></div><div class="meter"><i style="width:${(100 * boss.hp) / boss.maxHp}%"></i></div><p>${boss.intent ? `⚠ ${boss.intent.skill}: impacto em ${boss.intent.remaining || 1} ação(ões)! Saia das casas marcadas.` : def.tip} ${boss.hp < boss.maxHp / 2 && def.kind === "boss" ? "FÚRIA ATIVA." : ""}</p><small>Saída bloqueada até derrotá-lo.</small></section>`;
+}
 function ability(a, icon, title, desc, key, disabled = false) {
   return `<button class="ability" data-action="${a}" ${disabled ? "disabled" : ""}><span class="ability-icon">${icon}</span><span><b>${title}</b><small>${desc}</small></span><kbd>${key}</kbd></button>`;
 }
 function shop(r) {
   return `<div class="shop-view"><span class="shop-art">⚖</span><div class="eyebrow">O MERCADOR ERRANTE</div><h2>Provisões para a descida.</h2><p>Moedas valem apenas nesta run. Comprar não gasta turno.</p>${[
-    ["potion", "Poção vital", "Cura 25 de vida ao usar", 20],
-    ["training", "Conhecimento antigo", "Receba 15 XP", 30],
-    ["armor", "Reforço do manto", "+1 de defesa nesta run", 45],
+    ["potion", "Poção vital", "Cura 25 de vida ao usar", 28],
+    ["mana", "Poção de mana", "Restaura 14 mana ao usar (tecla 7)", 24],
+    ["training", "Conhecimento antigo", "Receba 15 XP", 40],
+    ["armor", "Reforço do manto", "+1 de defesa nesta run", 60],
   ]
     .map(
       ([k, n, d, c]) =>
@@ -148,7 +154,7 @@ function camp() {
       )
       .join(
         "",
-      )}</div><p class="hint">Controles: WASD / setas · QEZC diagonais · Enter desce · Espaço ataca · 1, 2, 4, 5, 6 poderes · 3 poção · ponto espera.</p></main>`,
+      )}</div><p class="hint">Controles: WASD / setas · QEZC diagonais · Enter desce · Espaço ataca · 1, 2, 4, 5, 6 poderes · 3 poção vital · 7 poção de mana · ponto espera.</p></main>`,
   );
   bind();
 }
@@ -260,6 +266,14 @@ function drawEffects(effects, progress) {
     c.strokeStyle = c.fillStyle = c.shadowColor = effect.color;
     c.shadowBlur = 22;
     c.lineWidth = 4;
+    if (effect.type === "enemy") {
+      c.globalAlpha = 1 - progress;
+      for (const cell of effect.targets) {
+        c.fillRect(cell.x * t + 3, cell.y * t + 3, t - 6, t - 6);
+      }
+      c.restore();
+      continue;
+    }
     const center = (v) => ({ x: v.x * t + 24, y: v.y * t + 24 });
     if (effect.type === "burst" || effect.type === "nova") {
       const from = center(effect.from);
@@ -360,6 +374,7 @@ document.addEventListener("keydown", (e) => {
       4: "bolt",
       5: "frost",
       6: "chain",
+      7: "mana",
     }[key]
   ) {
     e.preventDefault();
@@ -374,6 +389,7 @@ document.addEventListener("keydown", (e) => {
         4: "bolt",
         5: "frost",
         6: "chain",
+        7: "mana",
       }[key],
     );
   }
@@ -414,6 +430,26 @@ function draw(r) {
     c.fillStyle = "#38edff";
     c.fillRect(tx + 10, ty + 9 + i * 8, 28 - i * 5, 4);
   }
+  for (const enemy of r.enemies) {
+    if (!enemy.intent) continue;
+    c.save();
+    c.fillStyle = encounters[enemy.variant]?.color || "#ff4f8d";
+    c.strokeStyle = c.fillStyle;
+    for (const cell of enemy.intent.cells) {
+      c.globalAlpha = 0.25;
+      c.fillRect(cell.x * t + 2, cell.y * t + 2, t - 4, t - 4);
+      c.globalAlpha = 0.9;
+      c.lineWidth = 2;
+      c.strokeRect(cell.x * t + 4, cell.y * t + 4, t - 8, t - 8);
+      c.beginPath();
+      c.moveTo(cell.x * t + 17, cell.y * t + 17);
+      c.lineTo(cell.x * t + 31, cell.y * t + 31);
+      c.moveTo(cell.x * t + 31, cell.y * t + 17);
+      c.lineTo(cell.x * t + 17, cell.y * t + 31);
+      c.stroke();
+    }
+    c.restore();
+  }
   for (let item of r.items) {
     const x = item.x * t + 24,
       y = item.y * t + 24;
@@ -421,7 +457,11 @@ function draw(r) {
     c.fillStyle =
       c.strokeStyle =
       c.shadowColor =
-        item.type === "gold" ? "#efff65" : "#ff51d6";
+        item.type === "gold"
+          ? "#efff65"
+          : item.type === "mana"
+            ? "#599aff"
+            : "#ff51d6";
     c.shadowBlur = 10;
     if (item.type === "gold") {
       c.beginPath();
@@ -435,7 +475,7 @@ function draw(r) {
     }
     c.restore();
   }
-  function sprite(x, y, type) {
+  function sprite(x, y, type, variant) {
     let px = x * t,
       py = y * t;
     if (drawSprite(c, type, px, py, t)) return;
@@ -459,7 +499,11 @@ function draw(r) {
       c.fillRect(px + 33, py + 12, 9, 7);
     } else {
       let color =
-        type === "boss" ? "#ff4f8d" : type === "bat" ? "#b77bff" : "#3deab9";
+        type === "boss"
+          ? encounters[variant]?.color || "#ff4f8d"
+          : type === "bat"
+            ? "#b77bff"
+            : "#3deab9";
       c.fillStyle = color;
       c.fillRect(px + 10, py + 20, 28, 15);
       c.fillRect(px + 16, py + 13, 17, 8);
@@ -477,7 +521,7 @@ function draw(r) {
     }
   }
   for (let e of r.enemies) {
-    sprite(e.x, e.y, e.type);
+    sprite(e.x, e.y, e.type, e.variant);
     if (e.frozen) {
       c.strokeStyle = "#8bbcff";
       c.lineWidth = 2;

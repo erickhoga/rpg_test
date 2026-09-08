@@ -863,3 +863,42 @@ button:hover:not(:disabled) {
   background: #111329;
   box-shadow: 12px 0 #111329;
 }
+
+.meter.mana i {
+  background: linear-gradient(90deg, #466dff, #80c7ff);
+}
+.boss-panel {
+  padding: 14px 18px;
+  background: #24152d;
+  border-block: 1px solid var(--boss-color);
+}
+.boss-panel > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--boss-color);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.boss-panel .meter i {
+  background: var(--boss-color);
+}
+.boss-panel p {
+  font-size: 12px;
+  margin: 8px 0;
+  color: #f3d8e5;
+  line-height: 1.5;
+}
+.boss-panel small {
+  font-size: 10px;
+  color: #b4a1bc;
+}
+@media (max-width: 650px) {
+  .boss-panel > div:first-child {
+    flex-wrap: wrap;
+    font-size: 11px;
+  }
+  .hero-panel .meter-label {
+    font-size: 10px;
+  }
+}

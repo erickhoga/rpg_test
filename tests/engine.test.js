@@ -110,7 +110,7 @@ test("compras e poções respeitam recursos; nova exige nível 4", () => {
   assert.equal(purchase(p.run, "potion"), false);
   assert.equal(act(p, "potion"), false);
   assert.equal(act(p, "nova"), false);
-  p.run.gold = 30;
+  p.run.gold = 40;
   assert.equal(purchase(p.run, "training"), true);
   assert.equal(p.run.gold, 0);
 });
@@ -138,7 +138,7 @@ test("diagonais movem e atacam, sem atravessar quinas", () => {
   assert.equal(r.kills, 1);
   assert.equal(r.x, 4);
 });
-test("tiro respeita alcance e paredes, gera efeitos e recarga individual", () => {
+test("tiro respeita paredes e mana, gera efeitos e pode ser repetido com recurso", () => {
   const p = game(),
     r = p.run;
   r.enemies = [{ x: 5, y: 1, hp: 40, maxHp: 40, atk: 1, type: "slime" }];
@@ -149,12 +149,12 @@ test("tiro respeita alcance e paredes, gera efeitos e recarga individual", () =>
   const effects = [];
   assert.equal(act(p, "bolt", 0, 0, effects), true);
   assert.equal(effects[0].targets[0].x, 5);
-  assert.equal(r.enemies[0].hp, 30);
-  assert.equal(r.cooldowns.bolt, 2);
-  assert.equal(act(p, "bolt"), false);
+  assert.equal(r.enemies[0].hp, 32);
+  assert.equal(r.mana, 22);
+  assert.equal(act(p, "bolt"), true);
   r.enemies[0].x = 2;
   assert.equal(act(p, "burst"), true);
-  assert.equal(r.cooldowns.bolt, 1);
+  assert.equal(r.mana, 9);
 });
 test("congelamento impede duas ações e depois libera o inimigo", () => {
   const p = game(),
@@ -197,7 +197,7 @@ test("melhorias de habilidade persistem e aumentam dano na próxima run", () => 
   p.run.map = game().run.map;
   p.run.enemies = [{ x: 3, y: 1, hp: 100, maxHp: 100, atk: 1, type: "slime" }];
   act(p, "bolt");
-  assert.equal(p.run.enemies[0].hp, 88);
+  assert.equal(p.run.enemies[0].hp, 90);
   assert.equal(p.upgrades.skill_bolt, 1);
 });
 test("migração preserva run antiga e adiciona habilidades sem NaN", () => {
@@ -208,7 +208,8 @@ test("migração preserva run antiga e adiciona habilidades sem NaN", () => {
   p.run.cd = 3;
   migrate(p);
   assert.equal(p.upgrades.skill_bolt, 0);
-  assert.equal(p.run.cooldowns.burst, 3);
+  assert.equal(p.run.cooldowns, undefined);
+  assert.equal(p.run.mana, 28);
   assert.equal(p.run.skillRanks.bolt, 0);
   assert.equal(p.run.cd, undefined);
 });
