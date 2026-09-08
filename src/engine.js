@@ -1,4 +1,61 @@
 export const SIZE = 15;
+export const spells = {
+  burst: {
+    name: "Pulso neon",
+    icon: "✦",
+    key: "1",
+    level: 1,
+    range: 1,
+    damage: 2,
+    cooldown: 3,
+    color: "#ff51d6",
+    detail: "Todos adjacentes · 2× dano",
+  },
+  nova: {
+    name: "Nova de plasma",
+    icon: "❋",
+    key: "2",
+    level: 4,
+    range: 3,
+    damage: 1.6,
+    cooldown: 5,
+    color: "#bd7aff",
+    detail: "Área visível de 3 casas · 1,6× dano",
+  },
+  bolt: {
+    name: "Disparo iônico",
+    icon: "➶",
+    key: "4",
+    level: 1,
+    range: 6,
+    damage: 1.4,
+    cooldown: 2,
+    color: "#38edff",
+    detail: "Alvo visível mais próximo · 6 casas",
+  },
+  frost: {
+    name: "Lança criogênica",
+    icon: "❄",
+    key: "5",
+    level: 2,
+    range: 5,
+    damage: 1,
+    cooldown: 4,
+    color: "#8bbcff",
+    detail: "5 casas · congela por 2 ações",
+  },
+  chain: {
+    name: "Arco elétrico",
+    icon: "ϟ",
+    key: "6",
+    level: 3,
+    range: 5,
+    damage: 1.2,
+    cooldown: 4,
+    color: "#efff65",
+    detail: "5 casas · salta até 3 alvos (3 casas)",
+  },
+};
 export const upgrades = {
   vigor: {
     name: "Raiz vital",
@@ -31,6 +88,102 @@ export const upgrades = {
     max: 5,
   },
 };
+for (const [key, spell] of Object.entries(spells))
+  upgrades[`skill_${key}`] = {
+    name: spell.name,
+    description: "+20% de dano do poder por nível (permanente)",
+    base: 20,
+    max: 5,
+    icon: spell.icon,
+  };
+// Mantém personagens e runs da versão anterior utilizáveis.
+export function migrate(p) {
+  p.upgrades = {
+    ...Object.fromEntries(Object.keys(upgrades).map((k) => [k, 0])),
+    ...p.upgrades,
+  };
+  if (p.run) {
+    p.run.cooldowns ??= { burst: p.run.cd || 0, nova: p.run.cd || 0 };
+    delete p.run.cd;
+    p.run.skillRanks = Object.fromEntries(
+      Object.keys(spells).map((k) => [k, p.upgrades[`skill_${k}`]]),
+    );
+    p.run.enemies.forEach((e) => {
+      e.frozen ??= 0;
+    });
+  }
+  return p;
+}
+export const distance = (a, b) =>
+  Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+export function canStep(map, a, b) {
+  const dx = b.x - a.x,
+    dy = b.y - a.y;
+  return (
+    Number.isInteger(dx) &&
+    Number.isInteger(dy) &&
+    Math.max(Math.abs(dx), Math.abs(dy)) === 1 &&
+    map[b.y]?.[b.x] === 0 &&
+    (!dx || !dy || (map[a.y]?.[b.x] === 0 && map[b.y]?.[a.x] === 0))
+  );
+}
+export function visible(map, a, b) {
+  // Supercover: bloqueia paredes e disparos pelas quinas fechadas.
+  let x = a.x,
+    y = a.y,
+    dx = b.x - a.x,
+    dy = b.y - a.y,
+    nx = Math.abs(dx),
+    ny = Math.abs(dy),
+    sx = Math.sign(dx),
+    sy = Math.sign(dy),
+    ix = 0,
+    iy = 0;
+  while (ix < nx || iy < ny) {
+    let v = (1 + 2 * ix) * ny - (1 + 2 * iy) * nx,
+      next = { x, y };
+    if (v === 0) {
+      next.x += sx;
+      next.y += sy;
+      ix++;
+      iy++;
+    } else if (v < 0) {
+      next.x += sx;
+      ix++;
+    } else {
+      next.y += sy;
+      iy++;
+    }
+    if (!canStep(map, { x, y }, next)) return false;
+    x = next.x;
+    y = next.y;
+  }
+  return true;
+}
+export function targetsFor(r, key) {
+  let spell = spells[key];
+  if (!spell) return [];
+  let candidates = r.enemies
+    .filter((e) => distance(r, e) <= spell.range && visible(r.map, r, e))
+    .sort((a, b) => distance(r, a) - distance(r, b));
+  if (key === "burst" || key === "nova") return candidates;
+  let result = candidates.slice(0, 1);
+  if (key === "chain")
+    while (result.length && result.length < 3) {
+      let prev = result.at(-1),
+        next = r.enemies
+          .filter(
+            (e) =>
+              !result.includes(e) &&
+              distance(prev, e) <= 3 &&
+              visible(r.map, prev, e),
+          )
+          .sort((a, b) => distance(prev, a) - distance(prev, b))[0];
+      if (!next) break;
+      result.push(next);
+    }
+  return result;
+}
 export function profile(name) {
   return {
     name,
@@ -57,6 +210,7 @@ export function buy(p, k) {
   return true;
 }
 export function start(p, floor = 1) {
+  migrate(p);
   floor = Math.max(1, Math.min(floor, p.best, 1 + p.upgrades.gate * 5));
   p.run = {
     floor,
@@ -73,7 +227,10 @@ export function start(p, floor = 1) {
     shards: 0,
     kills: 0,
     potions: 2 + p.upgrades.flask,
-    cd: 0,
+    cooldowns: {},
+    skillRanks: Object.fromEntries(
+      Object.keys(spells).map((k) => [k, p.upgrades[`skill_${k}`]]),
+    ),
     choices: 0,
     log: [],
     map: [],
@@ -81,7 +238,7 @@ export function start(p, floor = 1) {
     items: [],
   };
   generate(p.run);
-  log(p.run, "A descida começa. Encontre a escada dourada.");
+  log(p.run, "A descida começa. Encontre a escada neon.");
 }
 export function log(r, s) {
   r.log.unshift(s);
@@ -90,31 +247,67 @@ export function log(r, s) {
 export function generate(r, rng = Math.random) {
   r.x = 1;
   r.y = 1;
-  r.map = Array.from({ length: SIZE }, (_, y) =>
-    Array.from({ length: SIZE }, (_, x) =>
-      !x || !y || x === 14 || y === 14 ? 1 : 0,
-    ),
-  );
+  r.map = Array.from({ length: SIZE }, () => Array(SIZE).fill(1));
+  // DFS aléatorio conecta todas as células; salas e atalhos abrem variações.
+  const stack = [{ x: 1, y: 1 }];
+  r.map[1][1] = 0;
+  while (stack.length) {
+    const cell = stack.at(-1),
+      options = [
+        [2, 0],
+        [-2, 0],
+        [0, 2],
+        [0, -2],
+      ]
+        .map(([dx, dy]) => ({ x: cell.x + dx, y: cell.y + dy }))
+        .filter(
+          (v) =>
+            v.x > 0 &&
+            v.y > 0 &&
+            v.x < SIZE - 1 &&
+            v.y < SIZE - 1 &&
+            r.map[v.y][v.x] === 1,
+        );
+    if (!options.length) {
+      stack.pop();
+      continue;
+    }
+    const next = options[Math.floor(rng() * options.length)];
+    r.map[(cell.y + next.y) / 2][(cell.x + next.x) / 2] = 0;
+    r.map[next.y][next.x] = 0;
+    stack.push(next);
+  }
+  for (let room = 0; room < 3; room++) {
+    const x = 1 + 2 * Math.floor(rng() * 6),
+      y = 1 + 2 * Math.floor(rng() * 6);
+    for (let dy = 0; dy < 3; dy++)
+      for (let dx = 0; dx < 3; dx++) r.map[y + dy][x + dx] = 0;
+  }
   for (let y = 2; y < 13; y++)
     for (let x = 2; x < 13; x++)
-      if (x % 3 === 0 && y % 3 === 0 && rng() < 0.8) r.map[y][x] = 1;
+      if (
+        r.map[y][x] === 1 &&
+        rng() < 0.09 &&
+        ((!r.map[y - 1][x] && !r.map[y + 1][x]) ||
+          (!r.map[y][x - 1] && !r.map[y][x + 1]))
+      )
+        r.map[y][x] = 0;
   r.enemies = [];
   r.items = [];
-  let occupied = new Set(["1,1", "13,13"]);
+  const free = [];
+  for (let y = 1; y < 14; y++)
+    for (let x = 1; x < 14; x++)
+      if (!r.map[y][x] && x + y >= 7 && !(x === 13 && y === 13))
+        free.push({ x, y });
   function spot() {
-    let x, y;
-    do {
-      x = 1 + Math.floor(rng() * 13);
-      y = 1 + Math.floor(rng() * 13);
-    } while (r.map[y][x] || occupied.has(`${x},${y}`) || x + y < 7);
-    occupied.add(`${x},${y}`);
-    return { x, y };
+    return free.splice(Math.floor(rng() * free.length), 1)[0];
   }
   for (let i = 0; i < Math.min(4 + Math.floor(r.floor * 0.8), 19); i++) {
     let boss = r.floor % 5 === 0 && i === 0;
     let hp = Math.round((10 + r.floor * 4) * (boss ? 3 : 1));
     r.enemies.push({
       ...spot(),
+      frozen: 0,
       hp,
       maxHp: hp,
       atk: 3 + Math.floor(r.floor * 1.3),
@@ -165,12 +358,13 @@ function hit(r, e, m = 1) {
     gain(r, 5 + r.floor * 3);
   }
 }
-export function act(p, action, dx = 0, dy = 0) {
+export function act(p, action, dx = 0, dy = 0, effects = []) {
   let r = p.run;
   if (!r || r.choices) return false;
   let used = false;
+  r.cooldowns ??= {};
   if (action === "move") {
-    if (Math.abs(dx) + Math.abs(dy) !== 1) return false;
+    if (!canStep(r.map, r, { x: r.x + dx, y: r.y + dy })) return false;
     let x = r.x + dx,
       y = r.y + dy;
     if (r.map[y]?.[x] !== 0) return false;
@@ -184,9 +378,7 @@ export function act(p, action, dx = 0, dy = 0) {
   }
   if (action === "wait") used = true;
   if (action === "attack") {
-    let e = r.enemies.find(
-      (e) => Math.abs(e.x - r.x) + Math.abs(e.y - r.y) === 1,
-    );
+    let e = r.enemies.find((e) => distance(r, e) === 1 && canStep(r.map, r, e));
     if (!e) {
       log(r, "Aproxime-se de uma criatura para atacar.");
       return false;
@@ -194,19 +386,25 @@ export function act(p, action, dx = 0, dy = 0) {
     hit(r, e);
     used = true;
   }
-  if (action === "burst" || action === "nova") {
-    if (r.cd > 0 || (action === "nova" && r.level < 4)) return false;
-    let targets = r.enemies.filter(
-      (e) =>
-        Math.abs(e.x - r.x) + Math.abs(e.y - r.y) <=
-        (action === "nova" ? 3 : 1),
-    );
+  if (spells[action]) {
+    const spell = spells[action];
+    if ((r.cooldowns[action] || 0) > 0 || r.level < spell.level) return false;
+    const targets = targetsFor(r, action);
     if (!targets.length) {
-      log(r, "Nenhum inimigo ao alcance do poder.");
+      log(r, "Nenhum alvo visível ao alcance. Paredes bloqueiam poderes.");
       return false;
     }
-    for (let e of targets) hit(r, e, action === "nova" ? 1.6 : 2);
-    r.cd = action === "nova" ? 6 : 4;
+    effects.push({
+      type: action,
+      color: spell.color,
+      from: { x: r.x, y: r.y },
+      targets: targets.map((e) => ({ x: e.x, y: e.y })),
+    });
+    for (const e of targets) {
+      hit(r, e, spell.damage * (1 + 0.2 * (r.skillRanks?.[action] || 0)));
+      if (action === "frost" && e.hp > 0) e.frozen = 2;
+    }
+    r.cooldowns[action] = spell.cooldown + 1;
     used = true;
   }
   if (action === "potion") {
@@ -233,7 +431,8 @@ export function act(p, action, dx = 0, dy = 0) {
   }
   if (!used) return false;
   r.turn++;
-  if (r.cd) r.cd--;
+  for (const key of Object.keys(r.cooldowns))
+    r.cooldowns[key] = Math.max(0, r.cooldowns[key] - 1);
   let item = r.items.find((i) => i.x === r.x && i.y === r.y);
   if (item) {
     if (item.type === "potion") {
@@ -246,8 +445,12 @@ export function act(p, action, dx = 0, dy = 0) {
     r.items = r.items.filter((i) => i !== item);
   }
   for (let e of [...r.enemies]) {
-    let dist = Math.abs(e.x - r.x) + Math.abs(e.y - r.y);
-    if (dist === 1) {
+    if (e.frozen > 0) {
+      e.frozen--;
+      continue;
+    }
+    let dist = distance(e, r);
+    if (dist === 1 && canStep(r.map, e, r)) {
       let damage = Math.max(1, e.atk - r.def);
       r.hp -= damage;
       log(r, `Você recebeu ${damage} de dano.`);
@@ -262,10 +465,15 @@ export function act(p, action, dx = 0, dy = 0) {
           [-1, 0],
           [0, 1],
           [0, -1],
+          [-1, -1],
+          [1, -1],
+          [-1, 1],
+          [1, 1],
         ]) {
           let x = c.x + a,
             y = c.y + b,
             key = `${x},${y}`;
+          if (!canStep(r.map, c, { x, y })) continue;
           if (x === e.x && y === e.y) {
             found = c;
             break;

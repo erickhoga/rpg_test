@@ -1,8 +1,8 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 :root {
   font-family: "DM Sans", sans-serif;
-  color: #e2e8d9;
-  background: #101b19;
+  color: #d7e4ea;
+  background: #0a0e21;
   font-synthesis: none;
   color-scheme: dark;
 }
@@ -11,7 +11,7 @@
 }
 body {
   margin: 0;
-  background: radial-gradient(ellipse at 50% 10%, #20342b66, transparent 65%);
+  background: radial-gradient(ellipse at 50% 10%, #141b4066, transparent 65%);
   min-height: 100vh;
 }
 button,
@@ -21,9 +21,9 @@ select {
 }
 button {
   cursor: pointer;
-  border: 1px solid #3d4e41;
-  background: #22332b;
-  color: #e2e8d9;
+  border: 1px solid #212d6a;
+  background: #141b41;
+  color: #d7e4ea;
   border-radius: 7px;
   padding: 12px 16px;
   transition:
@@ -31,7 +31,7 @@ button {
     transform 0.15s;
 }
 button:hover:not(:disabled) {
-  background: #354c3c;
+  background: #1f2a62;
   transform: translateY(-1px);
 }
 button:disabled {
@@ -42,12 +42,12 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 2px solid #d7cf97;
+  outline: 2px solid #a0c0ce;
   outline-offset: 3px;
 }
 header {
   height: 94px;
-  border-bottom: 1px solid #304037;
+  border-bottom: 1px solid #1b2455;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -59,7 +59,7 @@ header {
   gap: 13px;
   align-items: center;
   text-decoration: none;
-  color: #e7e9d4;
+  color: #d4e3e9;
   font:
     700 19px "Space Grotesk",
     sans-serif;
@@ -67,12 +67,12 @@ header {
 }
 .brand-icon {
   font-size: 38px;
-  color: #d9d4a0;
+  color: #a7c5d2;
 }
 .brand small {
   display: block;
   font-size: 9px;
-  color: #879b86;
+  color: #6d9fb4;
   letter-spacing: 3px;
   margin-top: 5px;
 }
@@ -84,20 +84,20 @@ footer {
   letter-spacing: 1.8px;
 }
 .tag {
-  border: 1px solid #465142;
+  border: 1px solid #233070;
   padding: 8px 12px;
   border-radius: 20px;
-  color: #b7c0a5;
+  color: #9abccb;
 }
 .online {
-  color: #98ac94;
+  color: #82acbe;
 }
 .online i,
 .dot {
   display: inline-block;
   width: 6px;
   height: 6px;
-  background: #b7c99a;
+  background: #99bbca;
   border-radius: 50%;
   margin-right: 6px;
 }
@@ -113,7 +113,7 @@ main {
   margin-bottom: 25px;
 }
 .eyebrow {
-  color: #a3b691;
+  color: #86afc1;
   font-weight: 700;
   line-height: 1.6;
 }
@@ -128,7 +128,7 @@ h1 {
   margin: 10px 0;
 }
 h1 span {
-  color: #d5ca8c;
+  color: #97bbca;
 }
 h2 {
   font-size: 25px;
@@ -138,7 +138,7 @@ h3 {
   margin: 12px 0;
 }
 p {
-  color: #9cad9c;
+  color: #88b0c1;
   line-height: 1.7;
   font-size: 13px;
 }
@@ -149,8 +149,8 @@ p {
   align-items: start;
 }
 .panel {
-  background: #182720;
-  border: 1px solid #354538;
+  background: #0f1430;
+  border: 1px solid #1d275d;
   border-radius: 10px;
   padding: 21px;
   margin-bottom: 18px;
@@ -164,13 +164,13 @@ p {
 .portrait {
   font-size: 64px;
   border-radius: 50%;
-  background: radial-gradient(#455a40, #24392d);
+  background: radial-gradient(#345766, #161e47);
   width: 104px;
   height: 104px;
   margin: 24px auto 12px;
   display: grid;
   place-items: center;
-  border: 1px solid #667456;
+  border: 1px solid #457285;
 }
 .hero-panel h2 {
   margin: 9px;
@@ -178,40 +178,40 @@ p {
 .pill {
   font-size: 9px;
   letter-spacing: 1px;
-  color: #b9c6a2;
+  color: #9cbecc;
 }
 .meter-label {
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  color: #aebeaa;
+  color: #9cbecc;
   margin: 24px 0 8px;
 }
 .meter-label b {
-  color: #e0e5d4;
+  color: #d1e1e8;
   font-weight: 500;
 }
 .meter {
   height: 7px;
-  background: #0c1713;
+  background: #080b1b;
   border-radius: 4px;
   overflow: hidden;
 }
 .meter i {
   display: block;
   height: 100%;
-  background: #92ae73;
+  background: #6d9fb4;
 }
 .meter.xp i {
-  background: #ccb974;
+  background: #82acbe;
 }
 .stats {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid #354537;
+  border-top: 1px solid #1d275d;
   padding-top: 20px;
   margin-top: 25px;
-  color: #b9c398;
+  color: #93b8c8;
 }
 .stats b,
 .stats small {
@@ -224,7 +224,7 @@ p {
 .stats small {
   font-size: 8px;
   letter-spacing: 1px;
-  color: #82937d;
+  color: #6297ae;
 }
 .mission p {
   font-size: 12px;
@@ -233,15 +233,15 @@ p {
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  border-top: 1px solid #354537;
+  border-top: 1px solid #1d275d;
   padding-top: 16px;
-  color: #a3b095;
+  color: #85aec0;
 }
 .board-panel {
-  border: 1px solid #43513c;
+  border: 1px solid #222e6b;
   border-radius: 10px;
   overflow: hidden;
-  background: #16251e;
+  background: #0e132d;
 }
 .board-head,
 .board-foot {
@@ -253,28 +253,28 @@ p {
   font-size: 11px;
 }
 .floor-symbol {
-  color: #d6c185;
+  color: #93b8c8;
   margin-right: 10px;
   font-size: 20px;
 }
 .biome {
-  color: #91a28e;
+  color: #77a5b9;
   font-size: 10px;
 }
 .turn {
-  color: #b9c5a6;
+  color: #9ebfcd;
   font-size: 9px;
-  border: 1px solid #485641;
+  border: 1px solid #243173;
   border-radius: 4px;
   padding: 6px;
 }
 .board-foot {
   font-size: 9px;
   letter-spacing: 1px;
-  border-top: 1px solid #354637;
+  border-top: 1px solid #1e285d;
 }
 .board-foot small {
-  color: #889a83;
+  color: #6a9db3;
   letter-spacing: 0;
 }
 .board-foot button {
@@ -298,11 +298,11 @@ canvas {
   align-items: center;
   gap: 11px;
   padding: 12px 10px;
-  background: #203229;
+  background: #141b3e;
 }
 .ability-icon {
   font-size: 23px;
-  color: #d0c797;
+  color: #9bbdcc;
   width: 25px;
   text-align: center;
 }
@@ -312,7 +312,7 @@ canvas {
 .ability small {
   display: block;
   font-size: 9px;
-  color: #98ab94;
+  color: #81acbe;
   margin-top: 4px;
 }
 .ability kbd {
@@ -323,7 +323,7 @@ canvas {
 }
 .journal p {
   font-size: 11px;
-  border-bottom: 1px solid #2a3c2f;
+  border-bottom: 1px solid #18214e;
   padding-bottom: 9px;
   margin: 9px 0;
 }
@@ -332,13 +332,13 @@ canvas {
   margin-bottom: 0;
 }
 .journal .latest {
-  color: #d0d7bc;
+  color: #b8d0db;
 }
 .shards {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #cbb88b;
+  color: #90b6c6;
   padding: 0 14px;
   font-size: 23px;
 }
@@ -348,7 +348,7 @@ canvas {
 .shards small {
   display: block;
   font-size: 9px;
-  color: #83977e;
+  color: #6599b0;
   margin-top: 4px;
 }
 .controls {
@@ -357,16 +357,16 @@ canvas {
   gap: 22px;
   align-items: center;
   margin-top: 20px;
-  color: #82947d;
+  color: #6398ae;
   font-size: 11px;
 }
 kbd {
   display: inline-block;
   font: 10px "DM Sans";
-  border: 1px solid #42523d;
+  border: 1px solid #222e6d;
   border-radius: 3px;
   padding: 4px 6px;
-  color: #b7c6a5;
+  color: #9ebfcd;
   margin: 1px;
 }
 .dpad {
@@ -377,19 +377,19 @@ kbd {
   padding: 8px 12px;
 }
 footer {
-  border-top: 1px solid #2f4033;
+  border-top: 1px solid #1b2454;
   margin: 25px 4% 0;
   padding: 24px 0;
   display: flex;
   justify-content: space-between;
   gap: 15px;
-  color: #81947b;
+  color: #6197ae;
   font-size: 9px;
   letter-spacing: 1px;
 }
 footer b {
   margin: 0 10px;
-  color: #52684d;
+  color: #3e6677;
 }
 #sync {
   letter-spacing: 0;
@@ -410,8 +410,8 @@ footer b {
   max-width: 660px;
 }
 .welcome form {
-  background: #1d2e25;
-  border: 1px solid #45543c;
+  background: #121839;
+  border: 1px solid #232f6d;
   border-radius: 12px;
   padding: 26px;
   margin-top: 40px;
@@ -421,7 +421,7 @@ label {
   display: block;
   font-size: 10px;
   letter-spacing: 2px;
-  color: #b3c29f;
+  color: #97bbca;
   margin-bottom: 12px;
 }
 .input-row {
@@ -430,27 +430,27 @@ label {
 }
 input,
 select {
-  border: 1px solid #566348;
+  border: 1px solid #3a6071;
   border-radius: 6px;
-  background: #122118;
+  background: #0c1027;
   padding: 14px;
-  color: #eee;
+  color: #e9f0f3;
   width: 100%;
   min-width: 0;
 }
 .primary {
-  background: #cbd4a1;
-  color: #213125;
+  background: #a5c3d0;
+  color: #141b3e;
   font-weight: 700;
   white-space: nowrap;
-  border-color: #cbd4a1;
+  border-color: #a5c3d0;
 }
 .primary:hover:not(:disabled) {
-  background: #e1e7bd;
+  background: #c4d8e0;
 }
 .welcome form small {
   display: block;
-  color: #96a78b;
+  color: #78a6ba;
   font-size: 11px;
   line-height: 1.6;
   margin-top: 14px;
@@ -459,7 +459,7 @@ select {
   display: flex;
   gap: 30px;
   margin-top: 38px;
-  color: #b2c299;
+  color: #93b8c8;
   font-size: 12px;
 }
 .features b {
@@ -476,8 +476,8 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background: #203428;
-  border: 1px solid #586447;
+  background: #141b40;
+  border: 1px solid #3a6071;
   border-radius: 10px;
   padding: 25px;
   margin: 30px 0 40px;
@@ -485,7 +485,7 @@ select {
 .camp-banner small {
   font-size: 10px;
   letter-spacing: 1px;
-  color: #b5c39c;
+  color: #96bac9;
 }
 .camp-banner h2 {
   margin-bottom: 0;
@@ -501,14 +501,14 @@ select {
 }
 .upgrade-grid small {
   display: block;
-  color: #97a786;
+  color: #75a4b8;
   font-size: 9px;
   letter-spacing: 1px;
   margin-top: 18px;
 }
 .upgrade-icon {
   font-size: 32px;
-  color: #c7ce9b;
+  color: #9dbecc;
 }
 .upgrade-grid p {
   min-height: 45px;
@@ -523,7 +523,7 @@ select {
 .overlay {
   position: fixed;
   inset: 0;
-  background: #07110ede;
+  background: #060812de;
   display: grid;
   place-items: center;
   padding: 20px;
@@ -544,7 +544,7 @@ select {
   display: block;
   margin-top: 10px;
   font-size: 11px;
-  color: #aebe96;
+  color: #8fb5c5;
 }
 .shop-view {
   padding: 32px;
@@ -554,7 +554,7 @@ select {
 .shop-art {
   display: block;
   font-size: 65px;
-  color: #cfca98;
+  color: #9bbdcc;
   margin: 15px;
 }
 .shop-view button {
@@ -567,7 +567,7 @@ select {
 }
 .shop-view small {
   display: block;
-  color: #94a88a;
+  color: #78a6ba;
   font-size: 11px;
   margin-top: 7px;
 }
@@ -734,4 +734,132 @@ select {
   #sync {
     text-align: left;
   }
+}
+
+/* Neon: cyan para ações, magenta para energia, violeta para a masmorra. */
+body {
+  background:
+    radial-gradient(ellipse at 15% 0%, #702b952b, transparent 55%),
+    radial-gradient(ellipse at 90% 30%, #00dfff12, transparent 50%), #080d1e;
+}
+.brand-icon,
+.eyebrow,
+.floor-symbol,
+.dot,
+.ability-icon {
+  color: #36edff;
+}
+.brand-icon {
+  text-shadow: 0 0 24px #36edff80;
+}
+.tag {
+  color: #f479e6;
+  border-color: #b442a766;
+}
+.panel {
+  background: linear-gradient(145deg, #141a32, #10152b);
+  border-color: #353459;
+}
+.board-panel {
+  border-color: #6860b8;
+  box-shadow: 0 0 32px #9835ff15;
+}
+h1 span,
+.shards,
+.upgrade-icon {
+  color: #f35edd;
+}
+.primary {
+  background: #36edff;
+  color: #061827;
+  border-color: #36edff;
+  box-shadow: 0 0 20px #36edff24;
+}
+.primary:hover:not(:disabled) {
+  background: #92f6ff;
+}
+button:hover:not(:disabled) {
+  border-color: #36edff;
+}
+.meter i {
+  background: linear-gradient(90deg, #00bcb4, #36edff);
+  box-shadow: 0 0 12px #36edff;
+}
+.meter.xp i {
+  background: linear-gradient(90deg, #9657ff, #f35edd);
+}
+.portrait {
+  background: radial-gradient(#523776, #151c35);
+  border-color: #b166f9;
+  box-shadow: 0 0 24px #b166f92b;
+}
+.camp-banner {
+  background: linear-gradient(120deg, #14213c, #251538);
+  border-color: #695190;
+}
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 42px);
+  gap: 5px;
+}
+.dpad button {
+  padding: 7px 4px;
+  font-size: 18px;
+}
+.dpad small {
+  display: block;
+  font-size: 8px;
+  color: #9baad0;
+}
+.actions {
+  gap: 7px;
+}
+.ability {
+  padding: 9px 8px;
+}
+.ability small {
+  line-height: 1.45;
+}
+@media (max-width: 650px) {
+  .dpad {
+    grid-template-columns: repeat(3, 56px);
+  }
+  .dpad button {
+    min-height: 49px;
+    padding: 7px;
+  }
+  .upgrade-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+  button:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+.board-panel .controls {
+  padding: 0 12px 18px;
+  flex-wrap: wrap;
+}
+.avatar-core {
+  width: 40px;
+  height: 42px;
+  background: #36edff;
+  box-shadow: 0 0 20px #36edff60;
+  position: relative;
+  border: 7px solid #8461ed;
+}
+.avatar-core::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 10px;
+  width: 5px;
+  height: 5px;
+  background: #111329;
+  box-shadow: 12px 0 #111329;
 }

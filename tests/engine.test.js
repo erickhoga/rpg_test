@@ -9,11 +9,18 @@ import {
   gain,
   buy,
   purchase,
+  migrate,
+  targetsFor,
 } from "../src/engine.js";
 function game() {
   let p = profile("mario");
   start(p);
   p.run.enemies = [];
+  p.run.map = Array.from({ length: 15 }, (_, y) =>
+    Array.from({ length: 15 }, (_, x) =>
+      !x || !y || x === 14 || y === 14 ? 1 : 0,
+    ),
+  );
   return p;
 }
 test("parede não gasta turno; passo válido permite um ataque inimigo", () => {
@@ -113,4 +120,118 @@ test("atalho nunca excede melhoria ou recorde", () => {
   p.upgrades.gate = 1;
   start(p, 99);
   assert.equal(p.run.floor, 6);
+});
+
+test("diagonais movem e atacam, sem atravessar quinas", () => {
+  const p = game(),
+    r = p.run;
+  r.x = r.y = 3;
+  assert.equal(act(p, "move", 1, 1), true);
+  assert.deepEqual([r.x, r.y], [4, 4]);
+  r.map[4][5] = 1;
+  const turn = r.turn;
+  assert.equal(act(p, "move", 1, 1), false);
+  assert.equal(r.turn, turn);
+  r.map[4][5] = 0;
+  r.enemies = [{ x: 5, y: 5, hp: 1, atk: 3, type: "slime" }];
+  act(p, "move", 1, 1);
+  assert.equal(r.kills, 1);
+  assert.equal(r.x, 4);
+});
+test("tiro respeita alcance e paredes, gera efeitos e recarga individual", () => {
+  const p = game(),
+    r = p.run;
+  r.enemies = [{ x: 5, y: 1, hp: 40, maxHp: 40, atk: 1, type: "slime" }];
+  r.map[1][3] = 1;
+  assert.equal(act(p, "bolt"), false);
+  assert.equal(r.turn, 0);
+  r.map[1][3] = 0;
+  const effects = [];
+  assert.equal(act(p, "bolt", 0, 0, effects), true);
+  assert.equal(effects[0].targets[0].x, 5);
+  assert.equal(r.enemies[0].hp, 30);
+  assert.equal(r.cooldowns.bolt, 2);
+  assert.equal(act(p, "bolt"), false);
+  r.enemies[0].x = 2;
+  assert.equal(act(p, "burst"), true);
+  assert.equal(r.cooldowns.bolt, 1);
+});
+test("congelamento impede duas ações e depois libera o inimigo", () => {
+  const p = game(),
+    r = p.run;
+  r.level = 2;
+  r.enemies = [{ x: 2, y: 1, hp: 100, maxHp: 100, atk: 5, type: "slime" }];
+  act(p, "frost");
+  assert.equal(r.hp, 36);
+  act(p, "wait");
+  assert.equal(r.hp, 36);
+  act(p, "wait");
+  assert.equal(r.hp, 32);
+});
+test("arco acerta três alvos e não atravessa paredes nos saltos", () => {
+  const p = game(),
+    r = p.run;
+  r.level = 3;
+  r.enemies = [2, 4, 6, 8].map((x) => ({
+    x,
+    y: 1,
+    hp: 100,
+    maxHp: 100,
+    atk: 1,
+    type: "slime",
+  }));
+  assert.equal(targetsFor(r, "chain").length, 3);
+  r.map[1][3] = 1;
+  assert.equal(targetsFor(r, "chain").length, 1);
+  r.map[1][3] = 0;
+  const effects = [];
+  act(p, "chain", 0, 0, effects);
+  assert.equal(effects[0].targets.length, 3);
+  assert.equal(r.enemies.filter((e) => e.hp < 100).length, 3);
+});
+test("melhorias de habilidade persistem e aumentam dano na próxima run", () => {
+  const p = profile("mario");
+  p.bank = 100;
+  assert.equal(buy(p, "skill_bolt"), true);
+  start(p);
+  p.run.map = game().run.map;
+  p.run.enemies = [{ x: 3, y: 1, hp: 100, maxHp: 100, atk: 1, type: "slime" }];
+  act(p, "bolt");
+  assert.equal(p.run.enemies[0].hp, 88);
+  assert.equal(p.upgrades.skill_bolt, 1);
+});
+test("migração preserva run antiga e adiciona habilidades sem NaN", () => {
+  const p = game();
+  delete p.upgrades.skill_bolt;
+  delete p.run.cooldowns;
+  delete p.run.skillRanks;
+  p.run.cd = 3;
+  migrate(p);
+  assert.equal(p.upgrades.skill_bolt, 0);
+  assert.equal(p.run.cooldowns.burst, 3);
+  assert.equal(p.run.skillRanks.bolt, 0);
+  assert.equal(p.run.cd, undefined);
+});
+test("geração produz formatos distintos e posições válidas sem sobreposição", () => {
+  const p = game(),
+    layouts = new Set();
+  let seed = 123;
+  const rng = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  for (let i = 0; i < 30; i++) {
+    generate(p.run, rng);
+    layouts.add(JSON.stringify(p.run.map));
+    const entities = [...p.run.enemies, ...p.run.items];
+    assert.equal(
+      new Set(entities.map((e) => `${e.x},${e.y}`)).size,
+      entities.length,
+    );
+    assert.ok(entities.every((e) => p.run.map[e.y][e.x] === 0));
+    assert.ok(
+      p.run.map
+        .slice(1, -1)
+        .flatMap((row) => row.slice(1, -1))
+        .filter((v) => v === 1).length > 10,
+    );
+  }
+  assert.equal(layouts.size, 30);
 });
